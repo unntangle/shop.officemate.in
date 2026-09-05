@@ -9,6 +9,24 @@ const nextConfig = {
      * us the format conversion and the responsive srcset, so it stays off.
      */
     formats: ["image/avif", "image/webp"],
+    /**
+     * Unsplash is allowed so the category strip can render stand-in imagery
+     * through next/image rather than a raw <img>, which keeps the responsive
+     * srcset and the format conversion.
+     *
+     * TEMPORARY. These are stock photographs standing in for real Officemate
+     * category shots. Remove this entry once `CATEGORY_IMAGES` points at local
+     * assets — leaving a third-party host allowlisted after it stops being
+     * used is a needless surface, and it makes the homepage depend on someone
+     * else's CDN staying up.
+     */
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+    ],
   },
   eslint: { ignoreDuringBuilds: true },
 };

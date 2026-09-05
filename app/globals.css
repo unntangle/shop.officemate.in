@@ -1,4 +1,7 @@
-@import url('https://fonts.cdnfonts.com/css/google-sans');
+/* Typeface is loaded in app/layout.tsx via next/font (Plus Jakarta Sans),
+   which self-hosts the files and exposes them as --font-jakarta. Do not add an
+   @import here: the previous "Google Sans" import pulled a proprietary Google
+   typeface from an unlicensed third-party mirror. */
 
 @tailwind base;
 @tailwind components;
@@ -52,11 +55,59 @@
   }
 }
 
+/* Search-field focus beam — see `.search-beam` for the full sequence.
+
+   `stroke-dashoffset` moves a dash along the real perimeter of the pill, so
+   the head travels at constant speed regardless of how wide the field is.
+   `pathLength="100"` on the rect normalises the path, which is what lets the
+   dash values be written as plain percentages and stay correct at any width. */
+@keyframes beam-run {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Head fades in fast, then holds at full strength for essentially the whole
+   lap. It only drops in the final few percent, at which point the resting
+   outline is coming up underneath — the short overlap avoids a frame where
+   neither is drawn. */
+@keyframes beam-fade {
+  0% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Search placeholder caret. A steady 1s blink — slower reads as sluggish,
+   faster starts to flicker in peripheral vision while someone is reading the
+   product name being typed. */
+@keyframes caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
 @layer base {
   :root {
     color-scheme: light;
-    --font-sans: 'Google Sans', system-ui, sans-serif;
-    --font-display: 'Google Sans', system-ui, sans-serif;
+    --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+    --font-display: var(--font-jakarta), system-ui, -apple-system, sans-serif;
   }
 
   html {
@@ -74,7 +125,18 @@
     color: #2D2D2D;
   }
 
-  /* Accessible focus ring across interactive elements. */
+  /* Accessible focus ring across interactive elements.
+
+     Deliberately sets NO border-radius. Browsers already draw an outline that
+     follows the element's own corner radius, so this rule only needs colour,
+     width and offset.
+
+     Setting one here actively breaks things. Tailwind v3 emits plain CSS rather
+     than native cascade layers, so this is settled on specificity alone:
+     `input:focus-visible` scores 0,1,1 and beats `.rounded-full` at 0,1,0.
+     A hardcoded radius therefore squares off every focused pill on the site,
+     and `inherit` is worse — it pulls from the parent element, which is
+     usually a plain wrapper with no radius, flattening the corners to zero. */
   a:focus-visible,
   button:focus-visible,
   input:focus-visible,
@@ -82,7 +144,6 @@
   [tabindex]:focus-visible {
     outline: 2px solid #C62828;
     outline-offset: 2px;
-    border-radius: 4px;
   }
 }
 
@@ -99,6 +160,182 @@
     @apply py-20 md:py-28 lg:py-32;
   }
 
+  /* Retail sections. Frido's rhythm is generous — blocks are separated by
+     white space rather than by rules or borders, which is what makes the page
+     read as calm despite carrying fifteen merchandising sections. Tightening
+     this is the fastest way to lose the look. */
+  .section-retail {
+    @apply py-14 md:py-20;
+  }
+
+  /* Centred kicker above a heavy headline — the single most repeated shape on
+     a Frido page. Small, grey, sentence case, no letterspacing tricks. */
+  .kicker {
+    @apply text-[0.8rem] font-normal tracking-normal text-muted;
+  }
+
+  .section-title {
+    @apply text-[1.5rem] font-bold leading-[1.15] tracking-[-0.02em] text-ink sm:text-[1.9rem] md:text-[2.25rem];
+  }
+
+  /* Horizontal product/category rails. Snap points matter more than they look:
+     without them a flick on touch lands mid-card and the row reads as broken. */
+  .rail {
+    @apply flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 md:gap-4;
+    scrollbar-width: none;
+  }
+
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rail > * {
+    @apply snap-start shrink-0;
+  }
+
+  /* Rail arrow buttons, matching the circular controls in the reference. */
+  .rail-arrow {
+    @apply absolute top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-white text-ink shadow-soft transition-all hover:border-ink/25 hover:shadow-lift disabled:pointer-events-none disabled:opacity-0 md:flex;
+  }
+
+  /* Strikethrough MRP. Rendered muted and smaller so the live price wins the
+     comparison at a glance rather than the two competing for attention. */
+  .mrp {
+    @apply text-[0.8rem] text-muted line-through;
+  }
+
+  /* ------------------------------------------------------------------
+     Search field focus beam.
+
+     Sequence on click: plain white field → a neon head runs once around the
+     pill → a thin red outline is left behind and holds while focused.
+
+     Drawn as an SVG stroke rather than a masked conic gradient, and that is
+     the whole point of this implementation. A conic gradient sweeps at
+     constant ANGULAR velocity about the element's centre, which is fine on a
+     square but wrong on a 1000×44 pill: the first few degrees of rotation
+     cover a hundred pixels of the long edge while a later chunk covers barely
+     ten. The head stretches and collapses instead of travelling, and spends
+     most of its lap compressed into a handful of pixels. `stroke-dashoffset`
+     moves a dash along the actual path, so speed is constant by construction.
+
+     Two rects, because they do different jobs:
+       .beam-track  the resting outline. Static, fades in on a delay.
+       .beam-head   the travelling neon dash. One lap, then gone.
+
+     The input must NOT set its own accent border on focus, or the outline is
+     already there and the beam has nothing to announce.
+  ------------------------------------------------------------------ */
+  .search-sweep {
+    position: relative;
+  }
+
+  .search-beam {
+    position: absolute;
+    /* Inset by half the stroke width so the 1.5px stroke, which straddles the
+       path, lands exactly on the input's own border rather than half outside
+       it. Without this the ring reads a pixel thicker than it is. */
+    top: 0.75px;
+    left: 0.75px;
+    width: calc(100% - 1.5px);
+    height: calc(100% - 1.5px);
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .search-beam rect {
+    fill: none;
+    /* 1.5px, not 2px. At 2px the outline reads as a heavy chip border rather
+       than a focus ring on a 44px field. */
+    stroke-width: 1.5;
+  }
+
+  .beam-track {
+    stroke: #c62828;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+
+  .search-sweep:focus-within .beam-track {
+    opacity: 1;
+    /* Held until the head has completed its full lap. `beam-run` is 0.95s, so
+       nothing of the resting outline shows before 0.9s — the last 0.05s is a
+       deliberate overlap with the head's fade-out, so the outline is arriving
+       as the light leaves rather than after a blank gap.
+
+       Keep this in step with the `beam-run` duration below. If the lap time
+       changes and this doesn't, the outline either appears mid-lap (spoiling
+       the reveal) or leaves a visible dead beat after it. */
+    transition-delay: 0.9s;
+  }
+
+  .beam-head {
+    /* Same red as the track, not a lighter pink. A different hue made the
+       head read as a separate, fatter object rather than as the same line
+       lit up. */
+    stroke: #c62828;
+    stroke-linecap: round;
+    /* 16% of the perimeter. Long enough to read as a streak with a tail;
+       a shorter dash reads as a dot skidding around the edge. */
+    stroke-dasharray: 16 84;
+    stroke-dashoffset: 100;
+    opacity: 0;
+    /* One faint, tight halo — no more.
+
+       drop-shadow spreads outward from the stroke, so its radius is added to
+       the line's apparent thickness. A 1.5px stroke under a 4px shadow reads
+       as a ~5px smear sitting next to a crisp 1.5px outline, which is exactly
+       the mismatch this is fixing. At 2px and low opacity the core stays
+       1.5px and the halo registers as light rather than as weight. */
+    filter: drop-shadow(0 0 2px rgba(198, 40, 40, 0.45));
+  }
+
+  .search-sweep:focus-within .beam-head {
+    /* Linear — easing an orbit makes the head visibly stall on the straights.
+       One lap only; nothing here loops. */
+    animation:
+      beam-run 0.95s linear 1,
+      beam-fade 0.95s linear 1;
+  }
+
+  /* Animated placeholder overlay. Sits exactly where the real placeholder
+     would, so the swap between the static and animated versions is invisible.
+     `pointer-events-none` is essential — without it the overlay swallows the
+     click that is meant to focus the field underneath it. */
+  .search-typer {
+    @apply pointer-events-none absolute left-10 top-1/2 flex -translate-y-1/2 items-center text-sm text-muted;
+  }
+
+  .search-caret {
+    @apply ml-0.5 inline-block h-[1.05em] w-px bg-muted align-middle;
+    animation: caret-blink 1s step-end infinite;
+  }
+
+  /* Dashed coupon/offer edge — the bank-offer chips in the reference. */
+  .coupon {
+    @apply rounded-xl border border-dashed border-line bg-white;
+  }
+}
+
+@layer utilities {
+  /* Clamp helpers for card copy. Product names in a grid must occupy a fixed
+     number of lines or the Add-to-cart buttons stop aligning across the row. */
+  .clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+@layer components {
   .lede {
     @apply text-lg leading-relaxed text-muted md:text-xl;
   }
@@ -208,8 +445,8 @@
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
     mask-composite: exclude;
-    /* The glow. Applied to the masked ring, so only the lit segment blooms. */
-    filter: drop-shadow(0 0 3px rgba(47, 111, 235, 0.9));
+    /* Glow removed. The mask already isolates a 1.5px ring; the drop-shadow
+       on top of it was what made the border bloom. */
     opacity: 0;
     transition: opacity 0.25s ease;
     pointer-events: none;
@@ -255,16 +492,15 @@
         #3b82f6,
         #ec4899
       ) border-box;
-    /* Soft coloured glow — an outset shadow sits behind the pill, so it never
-       rasterises the border edge the way a drop-shadow filter did. */
-    box-shadow: 0 0 14px -3px rgba(168, 85, 247, 0.55);
+    /* No outer glow — the running gradient border carries the effect on its
+       own. A coloured bloom around a pill in the header reads as a
+       notification badge rather than a link. */
     animation: neon-run 3s linear infinite;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    transition: transform 0.25s ease;
   }
 
   .gradient-pill:hover {
     transform: translateY(-1px);
-    box-shadow: 0 0 20px -3px rgba(168, 85, 247, 0.8);
   }
 
   /* Circular running-gradient halo — the oAI avatar. Same crisp double-clip
@@ -284,7 +520,6 @@
         #3b82f6,
         #ec4899
       ) border-box;
-    box-shadow: 0 0 20px -4px rgba(168, 85, 247, 0.5);
     animation: neon-run 3s linear infinite;
   }
 

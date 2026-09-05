@@ -3,25 +3,53 @@ import { Slot } from "@/components/ui/slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+/**
+ * Shared button primitive.
+ *
+ * Styled to the Frido reference, which is unusually specific about buttons:
+ * full pills, heavy weight, generous horizontal padding, and a solid fill
+ * carrying the brand colour with no gradient, no glow and no border. The
+ * press feedback is a small scale, nothing else.
+ *
+ * Two changes worth keeping if this is ever refactored:
+ *
+ *   Weight is `font-semibold`, not `font-medium`. Frido's CTAs are visually
+ *   heavy relative to body copy, and at medium the pill reads as a chip rather
+ *   than as the primary action on the section.
+ *
+ *   `accent` is the primary commercial action and `primary` (near-black) is
+ *   the secondary. That is the opposite of most systems, and it is deliberate:
+ *   on a storefront the brand-coloured button is the one that adds to cart,
+ *   while dark buttons carry navigational actions.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium transition-all duration-300 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full",
+    "font-semibold tracking-[-0.01em]",
+    "transition-all duration-300 active:scale-[0.98]",
+    "disabled:pointer-events-none disabled:opacity-50",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
+  ].join(" "),
   {
     variants: {
       variant: {
-        primary:
-          "bg-black text-white hover:bg-[#2a2a2a] active:scale-[0.98]",
-        accent:
-          "bg-accent text-white hover:bg-accent/90 active:scale-[0.98]",
+        primary: "bg-night text-white hover:bg-night-soft",
+        accent: "bg-accent text-white hover:bg-accent-deep",
+        /* Hairline outline on white. Frido's secondary buttons are a thin
+           neutral border, not a grey fill — a filled secondary competes with
+           the primary and flattens the hierarchy. */
         outline:
-          "border border-line bg-transparent text-ink hover:border-ink hover:bg-white",
+          "border border-ink/15 bg-transparent text-ink hover:border-ink hover:bg-surface",
         ghost: "text-ink hover:bg-surface",
-        subtle: "bg-surface text-ink hover:bg-line/70",
+        subtle: "bg-surface text-ink hover:bg-line/60",
       },
       size: {
-        sm: "h-9 px-4 text-sm",
-        md: "h-11 px-6 text-sm",
-        lg: "h-13 px-8 text-[0.95rem] py-3.5",
-        icon: "h-11 w-11",
+        /* Taller than the previous scale across the board. Frido's buttons are
+           chunky; a 36px pill next to their type sizes looks undernourished. */
+        sm: "h-10 px-5 text-[0.82rem]",
+        md: "h-12 px-7 text-[0.9rem]",
+        lg: "h-14 px-9 text-[0.95rem]",
+        icon: "h-12 w-12",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },

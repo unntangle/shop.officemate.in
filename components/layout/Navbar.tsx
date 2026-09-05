@@ -1,529 +1,554 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, ChevronDown, ChevronRight, Menu, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { NAV_LINKS, SITE } from "@/constants/site";
-import { CATEGORIES } from "@/constants/categories";
 import {
-  FEATURED,
-  PLACEHOLDER_IMAGES,
-  PRODUCT_IMAGES,
-  SUBCATEGORY_IMAGES,
-  productsByCategory,
-} from "@/constants/products";
+  ChevronDown,
+  Heart,
+  Menu,
+  Phone,
+  ShoppingBag,
+  Store,
+  User,
+  X,
+} from "lucide-react";
+import { SITE } from "@/constants/site";
 import type { CategorySlug } from "@/types";
-import { EnquireButton } from "@/components/common/EnquireButton";
-import { ProductRender } from "@/components/common/ProductRender";
+import {
+  CATEGORIES,
+  CATEGORY_GROUPS,
+  categoriesIn,
+} from "@/constants/categories";
+import { CATEGORY_IMAGES } from "@/constants/home";
+import { CATALOG } from "@/lib/catalog";
+import { formatINR } from "@/lib/commerce";
+import { useCart } from "@/components/commerce/CartProvider";
+import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+import { SearchBar } from "@/components/layout/SearchBar";
+import { EASE } from "@/lib/motion";
 
-/* Links shown directly in the navbar */
-const PRIMARY_HREFS = ["/", "/company", "/products", "/career"];
-const primaryLinks = NAV_LINKS.filter((l) => PRIMARY_HREFS.includes(l.href));
-const moreLinks = NAV_LINKS.filter(
-  (l) => !PRIMARY_HREFS.includes(l.href) && l.href !== "/contact"
-);
-
-interface Tile {
-  key: string;
-  label: string;
-  href: string;
-  image?: string;
-  category: CategorySlug;
-  swatch: string;
-}
+/** Secondary links that used to be primary nav on the showcase site. */
+const CORPORATE_LINKS = [
+  { label: "Become a Dealer", href: "/contact?intent=dealer" },
+  { label: "Bulk Orders", href: "/contact?intent=bulk" },
+  { label: "Projects", href: "/projects" },
+  { label: "About", href: "/company" },
+];
 
 /**
- * Up to three preview tiles for a category — one per subcategory, illustrated
- * with whatever product photography exists for that category.
+ * Top-level shop menus: the full catalogue, then the four intent groups.
+ *
+ * "All categories" is modelled as a group of everything rather than as a
+ * special case, so the trigger and the panel have exactly one render path.
+ * It differs only in `showSeries` — listing all nineteen series under it
+ * would produce a panel taller than most viewports, and a shopper who has
+ * opened "all" is browsing categories, not hunting a specific series.
  */
-function tilesFor(slug: CategorySlug): Tile[] {
-  const cat = CATEGORIES.find((c) => c.slug === slug);
-  const products = productsByCategory(slug);
-
-  return (cat?.subcategories ?? []).slice(0, 3).map((sub, i) => {
-    const p = products[i];
-    return {
-      key: `${slug}-${sub}`,
-      label: sub,
-      href: `/products?category=${slug}&sub=${encodeURIComponent(sub)}`,
-      image:
-        SUBCATEGORY_IMAGES[`${slug}:${sub}`] ??
-        (p ? PRODUCT_IMAGES[p.slug] : undefined) ??
-        PLACEHOLDER_IMAGES[i % PLACEHOLDER_IMAGES.length],
-      category: slug,
-      swatch: p?.swatch ?? "#C62828",
-    };
-  });
-}
+const SHOP_MENUS = [
+  {
+    id: "all",
+    label: "All Categories",
+    categories: CATEGORIES,
+    showSeries: false,
+  },
+  ...CATEGORY_GROUPS.map((group) => ({
+    id: group.id,
+    label: group.label,
+    categories: categoriesIn(group),
+    showSeries: true,
+  })),
+];
 
 export function Navbar() {
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const [megaOpen, setMegaOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const { totals, ready, openDrawer, wishlist } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeCat, setActiveCat] = useState<CategorySlug>(CATEGORIES[0].slug);
-  const moreRef = useRef<HTMLDivElement>(null);
-  const lastY = useRef(0);
-  const megaCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [preview, setPreview] = useState<CategorySlug | null>(null);
 
-  useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY;
-      setScrolled(y > 8);
+  const activeMenu = SHOP_MENUS.find((m) => m.id === openMenu) ?? null;
 
-      /* Hide once past 10% of the viewport height, reveal on scroll up */
-      const threshold = window.innerHeight * 0.1;
-      const goingDown = y > lastY.current;
+  /* The previewed category is validated against the open menu rather than
+     reset by an effect. Switching from Work to Relax leaves `preview` holding
+     a slug that Relax doesn't contain; checking membership here falls back to
+     the group's first category in the same render, so the right pane never
+     shows a category the left pane isn't listing. */
+  const previewSlug =
+    (preview && activeMenu?.categories.some((c) => c.slug === preview)
+      ? preview
+      : null) ??
+    activeMenu?.categories[0]?.slug ??
+    null;
 
-      if (y <= threshold) {
-        setHidden(false);
-      } else if (Math.abs(y - lastY.current) > 4) {
-        setHidden(goingDown);
-      }
+  const previewCategory = CATEGORIES.find((c) => c.slug === previewSlug);
 
-      lastY.current = y;
-    };
-    lastY.current = window.scrollY;
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  /* Never hide the bar while a menu is open */
-  const isHidden = hidden && !megaOpen && !moreOpen && !mobileOpen;
-
-  /* Hover only counts once the bar has settled.
-
-     Scrolling up animates the bar back down onto wherever the cursor already
-     is. The pointer never moves, but the element arrives underneath it, and the
-     browser reports that as a hover — which sprang the menus open on their own.
-     Two guards, because either alone leaves a gap: the triggers open on
-     mousemove rather than mouseenter, so a stationary cursor can't open
-     anything; and hover is disarmed across the reveal in case a browser
-     synthesises a move as the page settles. */
-  const hoverArmed = useRef(true);
-  useEffect(() => {
-    hoverArmed.current = false;
-    /* Just past the 300ms reveal transition. */
-    const t = setTimeout(() => {
-      hoverArmed.current = true;
-    }, 350);
-    return () => clearTimeout(t);
-  }, [isHidden]);
-
-  /* Product detail pages carry the bar edge-to-edge rather than as a
-     floating pill — the gallery already starts near the top of the page. */
-  const isProductDetail = /^\/products\/[^/]+$/.test(pathname);
-
-  useEffect(() => {
-    setMobileOpen(false);
-    setMegaOpen(false);
-    setMoreOpen(false);
-  }, [pathname]);
-
-  /* Close "More" dropdown on outside click */
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
-
-  /* Products mega menu is open only while the pointer is on the Products
-     trigger or the panel itself. A short close delay bridges the small gap
-     between the two so crossing it doesn't flicker the menu shut. openMega
-     keeps the scroll-reveal guard (movement + armed) so the bar sliding back
-     under a stationary cursor can't spring it open. */
-  const openMega = () => {
-    if (!hoverArmed.current) return;
-    if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
-    setMoreOpen(false);
-    setMegaOpen(true);
-  };
-  const cancelCloseMega = () => {
-    if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
-  };
-  const closeMegaSoon = () => {
-    if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
-    megaCloseTimer.current = setTimeout(() => setMegaOpen(false), 150);
-  };
-  useEffect(
-    () => () => {
-      if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
-    },
-    []
+  /* Real models first. An estimated price renders as "Price on request", and
+     a preview pane made entirely of those tells a shopper nothing. */
+  const previewItems = useMemo(
+    () =>
+      previewSlug
+        ? CATALOG.filter((i) => i.category === previewSlug && i.image)
+            .sort(
+              (a, b) =>
+                Number(a.pricingIsEstimated) - Number(b.pricingIsEstimated)
+            )
+            .slice(0, 5)
+        : [],
+    [previewSlug]
   );
 
+  /* Close the mobile sheet on navigation. Leaving it open across a route
+     change is the single most common bug in a header like this — the new page
+     renders behind a panel the shopper thought they had dismissed. The
+     dropdown has the same failure mode: clicking a series link navigates but
+     the pointer never leaves the panel, so no mouseleave fires and the menu
+     hangs over the page it just opened. */
+  useEffect(() => {
+    setMobileOpen(false);
+    setOpenMenu(null);
+  }, [pathname]);
+
+  /* Escape closes the dropdown. Keyboard users open it with focus, and
+     without this the only way back out is to tab through every link in the
+     panel. */
+  useEffect(() => {
+    if (!openMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenMenu(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openMenu]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
+  /* `ready` gates the count so a server-rendered 0 doesn't flash before
+     localStorage is read and the real number lands. */
+  const cartCount = ready ? totals.itemCount : 0;
+  const wishCount = ready ? wishlist.length : 0;
+
   return (
-    <header
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 bg-transparent",
-        isProductDetail ? "p-0" : "py-3 px-4 md:px-6",
-        "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
-        /* pointer-events-none while parked: an off-screen bar shouldn't be
-           catching hovers meant for the page. */
-        isHidden ? "-translate-y-full pointer-events-none" : "translate-y-0"
-      )}
-      onMouseLeave={() => {
-        setMegaOpen(false);
-        setMoreOpen(false);
-      }}
-    >
-      <div
-        className={cn(
-          "glass-light border border-ink/5 h-12 md:h-14 flex items-center justify-between transition-all duration-300 relative",
-          isProductDetail
-            ? "w-full rounded-none border-x-0 border-t-0 px-5 md:px-10"
-            : "rounded-full max-w-6xl mx-auto px-6 md:px-8",
-          /* The full-width bar carries the darker tint from the start —
-             at 0.28 it washes out against the product page's white ground. */
-          scrolled || isProductDetail ? "is-scrolled" : "",
-          /* Full-width sits on the page, so it only needs a hairline edge;
-             the floating pill keeps its lift. */
-          isProductDetail
-            ? "shadow-hairline"
-            : scrolled
-              ? "shadow-lift"
-              : "shadow-soft"
-        )}
-      >
-        <Link href="/" className="flex items-center gap-2" aria-label={`${SITE.name} home`}>
-          <Image
-            src="/images/logo.webp"
-            alt={SITE.name}
-            width={150}
-            height={20}
-            priority
-            className="h-6 w-auto object-contain"
-          />
-        </Link>
+    <header className="sticky top-0 z-50 w-full">
+      <AnnouncementBar />
 
-        <nav className="hidden items-center gap-1 md:flex h-full">
-          {primaryLinks.map((link) => {
-            if (link.hasDropdown) {
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onMouseMove={openMega}
-                  onMouseEnter={cancelCloseMega}
-                  onMouseLeave={closeMegaSoon}
-                  aria-expanded={megaOpen}
-                  className={cn(
-                    "relative px-4 py-2 text-sm font-medium text-black transition-colors hover:text-accent group",
-                    (megaOpen || pathname === link.href) && "text-accent"
-                  )}
-                >
-                  {link.label} +
-                  <span className="absolute bottom-1 left-4 right-4 h-[2px] w-0 bg-accent transition-all duration-300 group-hover:w-[calc(100%-32px)]" />
-                </Link>
-              );
-            }
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onMouseEnter={() => {
-                  setMegaOpen(false);
-                  setMoreOpen(false);
-                }}
-                className={cn(
-                  "relative px-4 py-2 text-sm font-medium transition-colors hover:text-accent group",
-                  pathname === link.href ? "text-accent" : "text-black"
-                )}
-              >
-                {link.label}
-                <span className="absolute bottom-1 left-4 right-4 h-[2px] w-0 bg-accent transition-all duration-300 group-hover:w-[calc(100%-32px)]" />
-              </Link>
-            );
-          })}
-
-          {/* More dropdown trigger */}
-          <div ref={moreRef} className="relative h-full flex items-center">
+      {/* ---------------------------------------------------------------
+          Utility row: logo, search, account actions.
+      --------------------------------------------------------------- */}
+      <div className="border-b border-line bg-white">
+        <div className="container">
+          <div className="flex h-16 items-center gap-3 md:h-[4.25rem] md:gap-6">
             <button
-              onMouseMove={() => {
-                if (!hoverArmed.current) return;
-                setMoreOpen(true);
-                setMegaOpen(false);
-              }}
-              onClick={() => setMoreOpen((v) => !v)}
-              aria-expanded={moreOpen}
-              className={cn(
-                "relative flex items-center gap-1 px-4 py-2 text-sm font-medium text-black transition-colors hover:text-accent group",
-                moreOpen && "text-accent"
-              )}
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+              className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface lg:hidden"
             >
-              More
-              <ChevronDown
-                size={14}
-                className={cn(
-                  "transition-transform duration-200",
-                  moreOpen && "rotate-180"
-                )}
-              />
-              <span className="absolute bottom-1 left-4 right-4 h-[2px] w-0 bg-accent transition-all duration-300 group-hover:w-[calc(100%-32px)]" />
+              <Menu size={22} />
             </button>
 
-            <AnimatePresence>
-              {moreOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-2xl border border-ink/5 glass-light is-scrolled shadow-lift z-50"
-                  onMouseEnter={() => setMoreOpen(true)}
+            <Link href="/" className="shrink-0" aria-label={`${SITE.name} home`}>
+              <Image
+                src="/images/logo.webp"
+                alt={SITE.name}
+                width={132}
+                height={32}
+                priority
+                className="h-7 w-auto object-contain md:h-8"
+              />
+            </Link>
+
+            <SearchBar className="hidden flex-1 md:block" />
+
+            <div className="ml-auto flex items-center gap-0.5 md:gap-1">
+              <Link
+                href="/contact#stores"
+                className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-[0.8rem] font-medium text-ink transition-colors hover:bg-surface xl:flex"
+              >
+                <Store size={16} />
+                Stores
+              </Link>
+
+              <a
+                href={`tel:${SITE.phone.replace(/\s/g, "")}`}
+                aria-label="Call us"
+                className="hidden h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface md:flex"
+              >
+                <Phone size={18} />
+              </a>
+
+              <Link
+                href="/wishlist"
+                aria-label={`Wishlist${wishCount ? `, ${wishCount} saved` : ""}`}
+                className="relative flex h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface"
+              >
+                <Heart size={19} />
+                {wishCount > 0 && (
+                  <span className="absolute right-1 top-1 flex h-4 min-w-4 animate-badge-pop items-center justify-center rounded-full bg-accent px-1 text-[0.6rem] font-bold text-white">
+                    {wishCount}
+                  </span>
+                )}
+              </Link>
+
+              <Link
+                href="/contact?intent=account"
+                aria-label="Account"
+                className="hidden h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface sm:flex"
+              >
+                <User size={19} />
+              </Link>
+
+              <button
+                onClick={openDrawer}
+                aria-label={`Cart${cartCount ? `, ${cartCount} items` : ", empty"}`}
+                className="relative flex h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-surface"
+              >
+                <ShoppingBag size={19} />
+                {cartCount > 0 && (
+                  <span
+                    key={cartCount}
+                    className="absolute right-1 top-1 flex h-4 min-w-4 animate-badge-pop items-center justify-center rounded-full bg-accent px-1 text-[0.6rem] font-bold text-white"
+                  >
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Search moves below the logo row on mobile — squeezing it between
+              the burger and four icons leaves a field too narrow to read. */}
+          <div className="pb-3 md:hidden">
+            <SearchBar />
+          </div>
+        </div>
+      </div>
+
+      {/* ---------------------------------------------------------------
+          Desktop category nav.
+
+          `onMouseLeave` sits on the outer wrapper rather than on each
+          trigger, so the pointer can travel from a label down into the panel
+          without crossing dead space and snapping the menu shut. That also
+          means the row and the panel must share one element — splitting them
+          would reintroduce the gap.
+      --------------------------------------------------------------- */}
+      <div
+        className="relative hidden border-b border-line bg-white lg:block"
+        onMouseLeave={() => setOpenMenu(null)}
+      >
+        <div className="container">
+          <nav
+            className="flex h-12 items-center justify-center"
+            aria-label="Categories"
+          >
+            {SHOP_MENUS.map((menu) => {
+              const isOpen = openMenu === menu.id;
+              return (
+                <button
+                  key={menu.id}
+                  onMouseEnter={() => setOpenMenu(menu.id)}
+                  onFocus={() => setOpenMenu(menu.id)}
+                  onClick={() => setOpenMenu(isOpen ? null : menu.id)}
+                  aria-expanded={isOpen}
+                  className={`flex h-full items-center gap-1.5 px-3.5 text-[0.85rem] font-medium transition-colors ${
+                    isOpen ? "text-accent" : "text-ink hover:text-accent"
+                  }`}
                 >
-                  <div className="py-2 relative z-10">
-                    {moreLinks.map((link) => (
+                  {menu.label}
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              );
+            })}
+
+            <span className="mx-3 h-4 w-px bg-line" />
+
+            {CORPORATE_LINKS.map((l) => (
+              <Link
+                key={l.label}
+                href={l.href}
+                onMouseEnter={() => setOpenMenu(null)}
+                className="px-3 text-[0.85rem] text-muted transition-colors hover:text-ink"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <AnimatePresence>
+          {openMenu && (
+            <motion.div
+              key={openMenu}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: EASE }}
+              className="absolute inset-x-0 top-full z-40 border-b border-line bg-white shadow-soft"
+            >
+              {/* Two panel shapes.
+
+                 "All categories" is a flat tile grid — nothing to drill into,
+                 so a left rail would be a rail with no second pane to drive.
+                 The four groups get the rail plus product preview, because
+                 there a category has series under it worth revealing. */}
+              {activeMenu?.id === "all" ? (
+                <div className="container py-10">
+                  <div className="grid grid-cols-4 gap-x-10 gap-y-7">
+                    {activeMenu.categories.map((category) => (
                       <Link
-                        key={link.href}
-                        href={link.href}
-                        className={cn(
-                          "flex items-center px-5 py-2.5 text-sm font-medium transition-colors hover:text-accent group/more",
-                          pathname === link.href ? "text-accent" : "text-black"
-                        )}
+                        key={category.slug}
+                        href={`/products?category=${category.slug}`}
+                        className="group flex items-center gap-4"
                       >
-                        <span className="relative pb-0.5">
-                          {link.label}
-                          <span className="absolute bottom-0 left-0 h-[1.5px] w-0 bg-accent transition-all duration-300 group-hover/more:w-full" />
+                        {/* The well is static; only the photo inside it moves.
+                           Eight tiles that each lift on hover make the panel
+                           feel unstable — see CategoryStrip. */}
+                        <span className="relative block h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface">
+                          <Image
+                            src={CATEGORY_IMAGES[category.slug] ?? ""}
+                            alt=""
+                            fill
+                            sizes="80px"
+                            className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                          />
+                        </span>
+                        <span className="text-[0.95rem] font-medium leading-snug text-ink transition-colors group-hover:text-accent">
+                          {category.name}
                         </span>
                       </Link>
                     ))}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </nav>
 
-        <div className="hidden md:block">
-          <EnquireButton
-            size="sm"
-            variant="primary"
-            withArrow
-            label="Enquire"
-            className="bg-black text-white hover:bg-ink"
-          />
-        </div>
-
-        <button
-          className="flex h-10 w-10 items-center justify-center rounded-full text-ink md:hidden"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-        >
-          <Menu size={22} />
-        </button>
-
-      {/* Mega menu (Products) */}
-      <AnimatePresence>
-        {megaOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute left-0 right-0 mx-auto top-full mt-2 hidden md:block max-w-5xl w-full overflow-hidden rounded-2xl border border-ink/5 glass-light is-scrolled shadow-lift pointer-events-auto z-50"
-            onMouseEnter={cancelCloseMega}
-            onMouseLeave={closeMegaSoon}
-          >
-            <div className="relative z-10 grid grid-cols-[15rem_1fr]">
-              {/* Left — category rail */}
-              <div className="border-r border-ink/10 py-3">
-                {CATEGORIES.map((cat) => {
-                  const isActive = cat.slug === activeCat;
-                  return (
+                  <div className="mt-9 flex justify-end">
                     <Link
-                      key={cat.slug}
-                      href={`/products?category=${cat.slug}`}
-                      onMouseEnter={() => setActiveCat(cat.slug)}
-                      onFocus={() => setActiveCat(cat.slug)}
-                      className="group/cat relative flex items-center justify-between gap-2 px-3 py-1.5 text-sm font-medium"
+                      href="/products"
+                      className="text-[0.85rem] font-medium text-accent transition-colors hover:text-accent-deep"
                     >
-                      {/* Sliding pill — echoes the navbar's own rounded bar */}
-                      {isActive && (
-                        <motion.span
-                          layoutId="cat-marker"
-                          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                          className="absolute inset-x-2 inset-y-1 rounded-full bg-gradient-to-r from-ink/[0.07] via-ink/[0.03] to-transparent"
-                        />
-                      )}
-
-                      <span
-                        className={cn(
-                          "relative flex items-center gap-2 py-1 pl-3 transition-colors duration-300",
-                          isActive ? "text-accent" : "text-muted group-hover/cat:text-ink"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-300",
-                            isActive ? "scale-100 bg-accent" : "scale-0 bg-ink/30"
-                          )}
-                        />
-                        {cat.name}
-                      </span>
-                      <ChevronRight
-                        size={14}
-                        className={cn(
-                          "relative mr-3 transition-all duration-300",
-                          isActive
-                            ? "translate-x-0 text-accent opacity-100"
-                            : "-translate-x-2 opacity-0"
-                        )}
-                      />
+                      View all
                     </Link>
-                  );
-                })}
-              </div>
-
-              {/* Right — preview tiles for the hovered category */}
-              <div className="p-6">
-                {/* Keyed, with no exit animation: an exit transition would keep
-                   the previous category's tiles on screen while the rail had
-                   already moved on, so the two panes disagreed mid-hover. */}
-                <motion.div
-                  key={activeCat}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                >
-                    <div className="grid grid-cols-3 gap-4">
-                      {tilesFor(activeCat).map((tile) => (
-                        <Link
-                          key={tile.key}
-                          href={tile.href}
-                          className="group/tile flex aspect-[3/4] flex-col overflow-hidden rounded-2xl bg-white ring-1 ring-ink/10 transition-all duration-300 hover:ring-1 hover:ring-accent hover:-translate-y-0.5"
+                  </div>
+                </div>
+              ) : (
+                <div className="container py-9">
+                  {/* Category names run across the top as tabs, the way Frido
+                     splits "Shop By Usecase" from "Shop By Concerns". A group
+                     can hold three categories (Work does), and a tab row
+                     handles that without the vertical rail the panel used
+                     before. Hover switches tabs — the pointer is already
+                     moving across the row, so requiring a click would add a
+                     step to a gesture the shopper is performing anyway. */}
+                  <div
+                    className="flex items-center gap-8 border-b border-line"
+                    role="tablist"
+                  >
+                    {activeMenu?.categories.map((category) => {
+                      const isActive = previewSlug === category.slug;
+                      return (
+                        <button
+                          key={category.slug}
+                          role="tab"
+                          aria-selected={isActive}
+                          onMouseEnter={() => setPreview(category.slug)}
+                          onFocus={() => setPreview(category.slug)}
+                          onClick={() => setPreview(category.slug)}
+                          className={`-mb-px border-b-2 pb-3 text-[1rem] transition-colors ${
+                            isActive
+                              ? "border-accent text-ink"
+                              : "border-transparent text-muted hover:text-ink"
+                          }`}
                         >
-                          {/* Product shot — contained, never cropped */}
-                          <div className="relative flex-1 overflow-hidden">
-                            {tile.image ? (
+                          {category.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-8 grid min-h-[5rem] grid-cols-5 gap-x-8 gap-y-7">
+                    {previewItems.length > 0
+                      ? previewItems.map((item) => (
+                          <Link
+                            key={item.slug}
+                            href={`/products/${item.slug}`}
+                            className="group flex items-center gap-4"
+                          >
+                            {/* The well is static; only the photo inside it
+                               moves — see CategoryStrip. */}
+                            <span className="relative block h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface">
                               <Image
-                                src={tile.image}
-                                alt={tile.label}
+                                src={item.image!}
+                                alt=""
                                 fill
-                                sizes="260px"
-                                className="object-contain p-3 transition-transform duration-500 group-hover/tile:scale-[1.05]"
+                                sizes="80px"
+                                className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                               />
-                            ) : (
-                              <div className="h-full w-full transition-transform duration-500 group-hover/tile:scale-[1.05]">
-                                <ProductRender
-                                  category={tile.category}
-                                  color={tile.swatch}
-                                  label={tile.label}
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Caption bar */}
-                          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line px-3.5 py-3">
-                            <span className="truncate text-xs font-semibold text-ink transition-colors group-hover/tile:text-accent">
-                              {tile.label}
                             </span>
-                            <span className="flex h-6 w-6 shrink-0 -translate-x-1 items-center justify-center rounded-full bg-ink text-white opacity-0 transition-all duration-300 group-hover/tile:translate-x-0 group-hover/tile:opacity-100">
-                              <ArrowUpRight size={12} />
+                            <span className="min-w-0">
+                              <span className="block truncate text-[0.9rem] font-medium text-ink transition-colors group-hover:text-accent">
+                                {item.name}
+                              </span>
+                              <span className="mt-0.5 block text-[0.8rem] text-muted">
+                                {/* Never print an invented number. See the
+                                   SERIES_PRICING warning in lib/catalog.ts. */}
+                                {item.pricingIsEstimated
+                                  ? "Price on request"
+                                  : formatINR(item.price)}
+                              </span>
                             </span>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
+                          </Link>
+                        ))
+                      : /* Most categories carry no catalogue entries yet — the
+                           shoppable range is chairs plus a few desks. Their
+                           series fill the row instead, so a tab never opens
+                           onto an empty band. */
+                        previewSlug &&
+                        previewCategory?.subcategories &&
+                        previewCategory.subcategories.map((series) => (
+                          <Link
+                            key={series}
+                            href={`/products?category=${previewSlug}&sub=${encodeURIComponent(series)}`}
+                            className="group flex items-center gap-4"
+                          >
+                            <span className="relative block h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface">
+                              <Image
+                                src={CATEGORY_IMAGES[previewSlug] ?? ""}
+                                alt=""
+                                fill
+                                sizes="80px"
+                                className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                              />
+                            </span>
+                            <span className="text-[0.9rem] font-medium leading-snug text-ink transition-colors group-hover:text-accent">
+                              {series}
+                            </span>
+                          </Link>
+                        ))}
+                  </div>
 
-                    <div className="mt-5 flex items-center justify-end">
-                      <Link
-                        href={`/products?category=${activeCat}`}
-                        className="group/all inline-flex items-center gap-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
-                      >
-                        <span className="relative pb-0.5">
-                          Explore all
-                          <span className="absolute bottom-0 left-0 h-[1.5px] w-0 bg-accent transition-all duration-300 group-hover/all:w-full" />
-                        </span>
-                        <ArrowRight
-                          size={13}
-                          className="transition-transform duration-300 group-hover/all:translate-x-0.5"
-                        />
-                      </Link>
-                    </div>
-                  </motion.div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  <div className="mt-9 flex justify-end">
+                    <Link
+                      href={`/products?category=${previewSlug}`}
+                      className="text-[0.85rem] font-medium text-accent transition-colors hover:text-accent-deep"
+                    >
+                      View all
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Mobile drawer */}
+      {/* ---------------------------------------------------------------
+          Mobile sheet.
+      --------------------------------------------------------------- */}
       <AnimatePresence>
         {mobileOpen && (
           <>
             <motion.div
-              className="fixed inset-0 z-50 bg-ink/20 backdrop-blur-sm md:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 z-[60] bg-scrim/50 lg:hidden"
+              aria-hidden
             />
             <motion.div
-              className="fixed inset-y-0 right-0 z-[60] flex w-[86%] max-w-sm flex-col bg-canvas p-6 md:hidden"
-              initial={{ x: "100%" }}
+              initial={{ x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.35, ease: EASE }}
+              className="fixed left-0 top-0 z-[61] flex h-dvh w-[85%] max-w-sm flex-col bg-white lg:hidden"
+              role="dialog"
+              aria-label="Menu"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3">
                 <Image
                   src="/images/logo.webp"
                   alt={SITE.name}
-                  width={120}
-                  height={16}
-                  className="h-5 w-auto object-contain"
+                  width={110}
+                  height={28}
+                  className="h-7 w-auto object-contain"
                 />
                 <button
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close menu"
-                  className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-surface"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface"
                 >
-                  <X size={22} />
+                  <X size={19} />
                 </button>
               </div>
 
-              <nav className="mt-8 flex flex-col gap-1">
-                {NAV_LINKS.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="rounded-xl px-3 py-3 text-lg font-medium text-ink hover:bg-surface"
-                  >
-                    {link.label}
-                  </Link>
+              <div className="flex-1 overflow-y-auto p-4">
+                {/* Grouped headings rather than an accordion. The sheet is
+                    already a scrolling surface, and collapsing four sections
+                    inside it would hide the whole catalogue behind taps on a
+                    screen that has room to just show it. `Accordion` is also
+                    FAQ-shaped — it takes question/answer strings, not links —
+                    so reusing it here would mean rewriting it. */}
+                {CATEGORY_GROUPS.map((group) => (
+                  <div key={group.id} className="mb-5">
+                    <p className="mb-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted">
+                      {group.label}
+                    </p>
+                    <ul className="space-y-0.5">
+                      {categoriesIn(group).map((c) => (
+                        <li key={c.slug}>
+                          <Link
+                            href={`/products?category=${c.slug}`}
+                            className="flex items-center justify-between rounded-lg px-3 py-2.5 text-[0.88rem] font-medium text-ink transition-colors hover:bg-surface"
+                          >
+                            {c.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </nav>
 
-              <p className="eyebrow mt-8 mb-2 px-3">Categories</p>
-              <div className="flex flex-col">
-                {CATEGORIES.map((cat) => (
-                  <Link
-                    key={cat.slug}
-                    href={`/products?category=${cat.slug}`}
-                    className="rounded-xl px-3 py-2 text-sm text-muted hover:bg-surface hover:text-ink"
-                  >
-                    {cat.name}
-                  </Link>
-                ))}
+                <Link
+                  href="/products"
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-[0.88rem] font-medium text-accent transition-colors hover:bg-surface"
+                >
+                  All categories
+                </Link>
+
+                <p className="mb-2 mt-6 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted">
+                  More
+                </p>
+                <ul className="space-y-0.5">
+                  {CORPORATE_LINKS.map((l) => (
+                    <li key={l.label}>
+                      <Link
+                        href={l.href}
+                        className="block rounded-lg px-3 py-2.5 text-[0.88rem] text-muted transition-colors hover:bg-surface hover:text-ink"
+                      >
+                        {l.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <div className="mt-auto">
-                <EnquireButton size="lg" variant="accent" className="w-full" withArrow />
-                <p className="mt-4 text-center text-xs text-muted">{SITE.phone}</p>
+              <div className="border-t border-line p-4">
+                <Link
+                  href="/advisor"
+                  className="flex h-12 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white"
+                >
+                  Find your chair
+                </Link>
               </div>
             </motion.div>
           </>

@@ -1,293 +1,381 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Search,
-  X,
-  LayoutGrid,
-  Armchair,
-  Table2,
-  Monitor,
-  Sofa,
-  Coffee,
-  DoorClosed,
-  Activity,
-  Archive,
-  type LucideIcon,
-} from "lucide-react";
+import { SlidersHorizontal, Star, X } from "lucide-react";
 import type { CategorySlug } from "@/types";
 import { CATEGORIES } from "@/constants/categories";
-import { CHAIR_MODELS } from "@/constants/chairs";
+import { CATALOG, priceBounds, seriesIn } from "@/lib/catalog";
+import { formatINR } from "@/lib/commerce";
 import { cn } from "@/lib/utils";
-import { ModelCard } from "@/components/products/ModelCard";
+import { CatalogCard } from "@/components/products/CatalogCard";
 
-/* An icon per category so the sidebar reads at a glance rather than as a wall
-   of text. Falls back to the grid glyph for anything unmapped. */
-const CATEGORY_ICON: Record<string, LucideIcon> = {
-  all: LayoutGrid,
-  "office-chairs": Armchair,
-  "office-tables": Table2,
-  "work-stations": Monitor,
-  "soft-sofas": Sofa,
-  "leisure-lounges": Coffee,
-  "tele-pods": DoorClosed,
-  "work-wellness": Activity,
-  "office-storage": Archive,
-};
+const SORTS = [
+  { id: "featured", label: "Featured" },
+  { id: "price-asc", label: "Price: low to high" },
+  { id: "price-desc", label: "Price: high to low" },
+  { id: "discount", label: "Biggest discount" },
+  { id: "popular", label: "Most reviewed" },
+  { id: "newest", label: "Newest" },
+] as const;
 
-/* Real Unsplash photos per category (small, cropped thumbnails). Plain <img>
-   loads these directly, so no next.config remotePatterns entry is needed; the
-   icon above stays as a graceful fallback if an image ever fails to load. */
-const cdn = (id: string) =>
-  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=96&h=96&q=70`;
-
-const CATEGORY_IMAGE: Record<string, string> = {
-  all: cdn("1718220216044-006f43e3a9b1"),
-  "office-chairs": cdn("1688578735352-9a6f2ac3b70a"),
-  "office-tables": cdn("1517502884422-41eaead166d4"),
-  "work-stations": cdn("1623177623442-979c1e42c255"),
-  "soft-sofas": cdn("1524758631624-e2822e304c36"),
-  "leisure-lounges": cdn("1633975846872-2bed7fd995f9"),
-  "tele-pods": cdn("1589779256250-a8743f78f4af"),
-  "work-wellness": cdn("1622126807280-9b5b32b28e77"),
-  "office-storage": cdn("1577412647305-991150c7d163"),
-};
-
-function CategoryThumb({
-  slug,
-  Icon,
-  active,
-}: {
-  slug: string;
-  Icon: LucideIcon;
-  active: boolean;
-}) {
-  const [err, setErr] = useState(false);
-  const src = CATEGORY_IMAGE[slug];
-  return (
-    <span
-      className={cn(
-        "grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full transition-colors",
-        active ? "bg-accent-soft text-accent" : "bg-surface text-muted"
-      )}
-    >
-      {src && !err ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          onError={() => setErr(true)}
-          className={cn(
-            "h-full w-full object-cover transition-all duration-300",
-            active ? "" : "grayscale group-hover:grayscale-0"
-          )}
-        />
-      ) : (
-        <Icon size={16} />
-      )}
-    </span>
-  );
-}
+const [MIN_PRICE, MAX_PRICE] = priceBounds();
 
 export function ProductsView() {
   const router = useRouter();
   const params = useSearchParams();
+
   const activeCategory = (params.get("category") as CategorySlug | null) ?? "all";
   const activeSub = params.get("sub");
+  const urlQuery = params.get("q") ?? "";
+  const urlSort = params.get("sort") ?? "featured";
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(urlQuery);
+  const [maxPrice, setMaxPrice] = useState(MAX_PRICE);
+  const [minRating, setMinRating] = useState(0);
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const setCategory = (slug: CategorySlug | "all") => {
+  /* Keep local search in step with the URL. The header search pushes `?q=`,
+     and without this the field would keep showing whatever was typed here
+     before, contradicting the results on screen. */
+  useEffect(() => setQuery(urlQuery), [urlQuery]);
+
+  const patch = (changes: Record<string, string | null>) => {
     const next = new URLSearchParams(Array.from(params.entries()));
-    if (slug === "all") next.delete("category");
-    else next.set("category", slug);
-    next.delete("sub");
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null) next.delete(key);
+      else next.set(key, value);
+    }
     const qs = next.toString();
     router.replace(qs ? `/products?${qs}` : "/products", { scroll: false });
   };
 
-  const setSub = (sub: string | null) => {
-    const next = new URLSearchParams(Array.from(params.entries()));
-    if (sub) next.set("sub", sub);
-    else next.delete("sub");
-    router.replace(`/products?${next.toString()}`, { scroll: false });
-  };
-
-  /* The real Officemate catalogue, filtered by category, series and search. */
-  const models = useMemo(() => {
-    let list = CHAIR_MODELS.slice();
+  const items = useMemo(() => {
+    let list = CATALOG.slice();
 
     if (activeCategory !== "all") {
-      list = list.filter((m) => m.category === activeCategory);
+      list = list.filter((i) => i.category === activeCategory);
     }
-    if (activeSub) list = list.filter((m) => m.subcategory === activeSub);
+    if (activeSub) list = list.filter((i) => i.subcategory === activeSub);
 
     const q = query.trim().toLowerCase();
     if (q) {
-      list = list.filter(
-        (m) =>
-          m.name.toLowerCase().includes(q) ||
-          m.subcategory.toLowerCase().includes(q)
+      list = list.filter((i) =>
+        `${i.name} ${i.subcategory}`.toLowerCase().includes(q)
       );
     }
 
-    return list;
-  }, [activeCategory, activeSub, query]);
+    list = list.filter((i) => i.price <= maxPrice);
 
-  const tabs: { slug: CategorySlug | "all"; name: string }[] = [
-    { slug: "all", name: "All products" },
-    ...CATEGORIES.map((c) => ({ slug: c.slug, name: c.name })),
-  ];
+    if (minRating > 0) {
+      list = list.filter((i) => (i.rating ?? 0) >= minRating);
+    }
 
-  const subcategories =
-    CATEGORIES.find((c) => c.slug === activeCategory)?.subcategories ?? [];
-  /* Only worth a series row when the active category actually splits into
-     more than one series. */
-  const showSeries = activeCategory !== "all" && subcategories.length > 1;
+    /* "In stock" here means genuinely buyable — a real price and a real
+       product record behind it. An estimated price is not a purchasable item,
+       so it must not survive this filter. */
+    if (inStockOnly) {
+      list = list.filter((i) => Boolean(i.product) && !i.pricingIsEstimated);
+    }
+
+    switch (urlSort) {
+      case "price-asc":
+        return list.sort((a, b) => a.price - b.price);
+      case "price-desc":
+        return list.sort((a, b) => b.price - a.price);
+      case "discount":
+        return list.sort(
+          (a, b) =>
+            (b.compareAtPrice ?? b.price) / b.price -
+            (a.compareAtPrice ?? a.price) / a.price
+        );
+      case "popular":
+        return list.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
+      case "newest":
+        return list.sort(
+          (a, b) => Number(Boolean(b.product?.isNew)) - Number(Boolean(a.product?.isNew))
+        );
+      default:
+        /* Featured: photographed and priced models first. A grid that opens on
+           a wall of generated placeholders reads as an empty shop. */
+        return list.sort(
+          (a, b) =>
+            Number(Boolean(b.image)) - Number(Boolean(a.image)) ||
+            Number(!b.pricingIsEstimated) - Number(!a.pricingIsEstimated)
+        );
+    }
+  }, [activeCategory, activeSub, query, maxPrice, minRating, inStockOnly, urlSort]);
+
+  const series = seriesIn(activeCategory);
+  const showSeries = series.length > 1;
+
+  const activeFilterCount =
+    (maxPrice < MAX_PRICE ? 1 : 0) +
+    (minRating > 0 ? 1 : 0) +
+    (inStockOnly ? 1 : 0) +
+    (activeSub ? 1 : 0);
+
+  const resetAll = () => {
+    setMaxPrice(MAX_PRICE);
+    setMinRating(0);
+    setInStockOnly(false);
+    setQuery("");
+    patch({ category: null, sub: null, q: null });
+  };
+
+  /* ------------------------------------------------------- filter panel */
+  const Filters = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="mb-3 text-[0.85rem] font-bold text-ink">Category</h3>
+        <div className="flex flex-col gap-0.5">
+          {[{ slug: "all" as const, name: "All products" }, ...CATEGORIES].map(
+            (c) => (
+              <button
+                key={c.slug}
+                onClick={() => patch({ category: c.slug === "all" ? null : c.slug, sub: null })}
+                className={cn(
+                  "rounded-lg px-3 py-2 text-left text-[0.82rem] transition-colors",
+                  activeCategory === c.slug
+                    ? "bg-accent-soft font-semibold text-accent"
+                    : "text-muted hover:bg-surface hover:text-ink"
+                )}
+              >
+                {c.name}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-1 text-[0.85rem] font-bold text-ink">Max price</h3>
+        <p className="mb-3 text-[0.78rem] text-muted">
+          Up to <span className="font-semibold text-ink">{formatINR(maxPrice)}</span>
+        </p>
+        <input
+          type="range"
+          min={MIN_PRICE}
+          max={MAX_PRICE}
+          step={500}
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(Number(e.target.value))}
+          aria-label="Maximum price"
+          className="w-full accent-accent"
+        />
+        <div className="mt-1 flex justify-between text-[0.7rem] text-muted">
+          <span>{formatINR(MIN_PRICE)}</span>
+          <span>{formatINR(MAX_PRICE)}</span>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-3 text-[0.85rem] font-bold text-ink">Rating</h3>
+        <div className="flex flex-col gap-0.5">
+          {[0, 4, 4.5].map((r) => (
+            <button
+              key={r}
+              onClick={() => setMinRating(r)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-[0.82rem] transition-colors",
+                minRating === r
+                  ? "bg-accent-soft font-semibold text-accent"
+                  : "text-muted hover:bg-surface hover:text-ink"
+              )}
+            >
+              {r === 0 ? (
+                "Any rating"
+              ) : (
+                <>
+                  <Star size={13} className="fill-rated text-rated" />
+                  {r} & above
+                </>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="flex cursor-pointer items-center gap-2.5">
+          <input
+            type="checkbox"
+            checked={inStockOnly}
+            onChange={(e) => setInStockOnly(e.target.checked)}
+            className="h-4 w-4 accent-accent"
+          />
+          <span className="text-[0.82rem] text-ink">
+            Buy online only
+            <span className="block text-[0.7rem] text-muted">
+              Hides quote-only models
+            </span>
+          </span>
+        </label>
+      </div>
+
+      {activeFilterCount > 0 && (
+        <button
+          onClick={resetAll}
+          className="w-full rounded-full border border-line py-2.5 text-[0.8rem] font-semibold text-ink transition-colors hover:border-ink hover:bg-surface"
+        >
+          Clear all filters
+        </button>
+      )}
+    </div>
+  );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
-      {/* ---------- Sidebar: categories ---------- */}
-      <aside className="lg:sticky lg:top-24 lg:self-start">
-        <div className="rounded-2xl border border-line bg-card p-3 sm:p-4">
-          <h3 className="px-2 pb-3 text-sm font-semibold text-ink">Categories</h3>
-          <nav className="flex flex-col gap-0.5">
-            {tabs.map((tab) => {
-              const isActive = tab.slug === activeCategory;
-              const Icon = CATEGORY_ICON[tab.slug] ?? LayoutGrid;
-              return (
-                <button
-                  key={tab.slug}
-                  onClick={() => setCategory(tab.slug)}
-                  className={cn(
-                    "group flex items-center gap-2.5 rounded-full py-1 pl-1 pr-4 text-left text-sm transition-colors",
-                    isActive
-                      ? "bg-surface font-semibold text-ink"
-                      : "text-muted hover:bg-surface/60 hover:text-ink"
-                  )}
-                >
-                  <CategoryThumb slug={tab.slug} Icon={Icon} active={isActive} />
-                  <span className="truncate">{tab.name}</span>
-                </button>
-              );
-            })}
-          </nav>
+    <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
+      <aside className="hidden lg:sticky lg:top-28 lg:block lg:self-start">
+        <div className="rounded-2xl border border-line bg-white p-4">
+          <Filters />
         </div>
       </aside>
 
-      {/* ---------- Content ---------- */}
       <div className="min-w-0">
-        {/* Controls */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative w-full sm:flex-1">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
-            />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search chairs, series…"
-              aria-label="Search products"
-              className="h-11 w-full rounded-full border border-line bg-white pl-10 pr-10 text-sm outline-none transition-colors placeholder:text-muted/70 hover:border-accent focus:border-accent focus-visible:rounded-full focus-visible:outline-none"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                aria-label="Clear search"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
-              >
-                <X size={16} />
-              </button>
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className="flex h-11 items-center gap-2 rounded-full border border-line bg-white px-4 text-[0.82rem] font-semibold text-ink lg:hidden"
+          >
+            <SlidersHorizontal size={15} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[0.65rem] text-white">
+                {activeFilterCount}
+              </span>
             )}
-          </div>
+          </button>
 
-          <span className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-4 text-sm text-muted transition-colors hover:border-accent">
-            <span className="font-semibold text-ink tabular-nums">
-              {models.length}
+          <span className="flex h-11 items-center rounded-full border border-line bg-white px-4 text-[0.82rem] text-muted">
+            <span className="mr-1 font-semibold tabular-nums text-ink">
+              {items.length}
             </span>
-            {models.length === 1 ? "model" : "models"}
+            {items.length === 1 ? "product" : "products"}
           </span>
+
+          <label className="ml-auto flex h-11 items-center gap-2 rounded-full border border-line bg-white px-4">
+            <span className="text-[0.78rem] text-muted">Sort</span>
+            <select
+              value={urlSort}
+              onChange={(e) => patch({ sort: e.target.value })}
+              aria-label="Sort products"
+              className="bg-transparent text-[0.82rem] font-semibold text-ink outline-none"
+            >
+              {SORTS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
-        {/* Series row — sits on top of the grid */}
+        {/* Series chips */}
         {showSeries && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4">
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
             <button
-              onClick={() => setSub(null)}
+              onClick={() => patch({ sub: null })}
               className={cn(
-                "relative shrink-0 rounded-full bg-surface px-3.5 py-1.5 text-xs font-medium transition-colors",
-                !activeSub ? "text-white" : "text-muted hover:text-ink"
+                "rounded-full px-3.5 py-1.5 text-[0.78rem] font-medium transition-colors",
+                !activeSub
+                  ? "bg-accent text-white"
+                  : "bg-surface text-muted hover:text-ink"
               )}
             >
-              {!activeSub && (
-                <motion.span
-                  layoutId="series-pill"
-                  className="absolute inset-0 rounded-full bg-accent"
-                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                />
-              )}
-              <span className="relative z-10">All series</span>
+              All series
             </button>
-            {subcategories.map((sub) => (
+            {series.map((sub) => (
               <button
                 key={sub}
-                onClick={() => setSub(sub)}
+                onClick={() => patch({ sub })}
                 className={cn(
-                  "relative shrink-0 rounded-full bg-surface px-3.5 py-1.5 text-xs font-medium transition-colors",
-                  activeSub === sub ? "text-white" : "text-muted hover:text-ink"
+                  "rounded-full px-3.5 py-1.5 text-[0.78rem] font-medium transition-colors",
+                  activeSub === sub
+                    ? "bg-accent text-white"
+                    : "bg-surface text-muted hover:text-ink"
                 )}
               >
-                {activeSub === sub && (
-                  <motion.span
-                    layoutId="series-pill"
-                    className="absolute inset-0 rounded-full bg-accent"
-                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                  />
-                )}
-                <span className="relative z-10">{sub}</span>
+                {sub}
               </button>
             ))}
           </div>
         )}
 
         {/* Grid */}
-        {models.length > 0 ? (
+        {items.length > 0 ? (
           <motion.div
             layout
-            className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            className="mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
           >
             <AnimatePresence mode="popLayout">
-              {models.map((model) => (
-                <ModelCard key={model.slug} model={model} />
+              {items.map((item) => (
+                <CatalogCard key={item.slug} item={item} />
               ))}
             </AnimatePresence>
           </motion.div>
         ) : (
-          <div className="mt-10 flex flex-col items-center justify-center rounded-2xl border border-dashed border-line py-20 text-center">
-            <p className="display text-lg font-semibold text-ink">
-              Nothing matches that yet
+          <div className="mt-10 flex flex-col items-center rounded-2xl border border-dashed border-line py-20 text-center">
+            <p className="text-lg font-semibold text-ink">
+              Nothing matches those filters
             </p>
             <p className="mt-2 max-w-sm text-sm text-muted">
-              Try a different search term, or reset the filters to see the full
-              range.
+              Try widening the price range or clearing the series filter.
             </p>
             <button
-              onClick={() => {
-                setQuery("");
-                setCategory("all");
-              }}
+              onClick={resetAll}
               className="mt-6 rounded-full border border-line px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:border-ink"
             >
-              Reset filters
+              Clear all filters
             </button>
           </div>
         )}
       </div>
+
+      {/* Mobile filter sheet */}
+      <AnimatePresence>
+        {filtersOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFiltersOpen(false)}
+              className="fixed inset-0 z-[65] bg-scrim/50 lg:hidden"
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="fixed bottom-0 left-0 right-0 z-[66] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white p-5 lg:hidden"
+              role="dialog"
+              aria-label="Filters"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-base font-bold text-ink">Filters</h2>
+                <button
+                  onClick={() => setFiltersOpen(false)}
+                  aria-label="Close filters"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface"
+                >
+                  <X size={19} />
+                </button>
+              </div>
+              <Filters />
+              <button
+                onClick={() => setFiltersOpen(false)}
+                className="mt-6 h-12 w-full rounded-full bg-accent text-sm font-semibold text-white"
+              >
+                Show {items.length} products
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
