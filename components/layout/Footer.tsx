@@ -5,13 +5,13 @@ import {
   Instagram,
   Linkedin,
   Mail,
-  MapPin,
   Phone,
   Youtube,
 } from "lucide-react";
-import { LOCATIONS, SITE } from "@/constants/site";
-import { STORES } from "@/constants/home";
+import { SITE } from "@/constants/site";
 import { CATEGORIES } from "@/constants/categories";
+import { FooterLinkCloud } from "@/components/layout/FooterLinkCloud";
+import { FooterAddresses } from "@/components/layout/FooterAddresses";
 
 /**
  * Storefront mega footer.
@@ -34,6 +34,18 @@ import { CATEGORIES } from "@/constants/categories";
  * because a checkout without visible returns and shipping terms is both a
  * conversion problem and, for an Indian storefront, a compliance one. Create
  * these pages before launch.
+ *
+ * ORDER INSIDE THE GREY CONTAINER, and the reason for it:
+ *
+ *   1. Five link columns  — the primary menu.
+ *   2. <FooterLinkCloud /> — the dense band of deep links (chair series,
+ *      individual models, sort views, workspace zones, payments and
+ *      certifications). Content lives in constants/footerLinks.ts.
+ *   3. <FooterAddresses /> — corporate office and the four experience
+ *      centres. Last on purpose: it is a signature, not navigation.
+ *
+ * The cloud replaced a standalone "We accept" row, so do not re-add a payment
+ * row here or the same seven words appear twice within one screen.
  */
 
 const POLICY_LINKS = [
@@ -176,100 +188,10 @@ export function Footer() {
           <Column title="Company" links={COMPANY_LINKS} />
         </div>
 
-        {/* ---------------------------------------------- addresses
-
-            The corporate office comes from LOCATIONS; the experience centres
-            come from STORES, the same list the homepage rail renders. That is
-            deliberate: LOCATIONS also carries a single Chennai experience
-            centre, and rendering both lists would print Chennai twice and
-            leave the other three centres invisible. STORES is the source of
-            truth for retail locations — add one there and it appears here, on
-            the homepage and in the count on the store rail's "N locations"
-            link, all at once. */}
-        <div className="mt-11 grid gap-6 border-t border-line pt-8 sm:grid-cols-2 lg:grid-cols-5">
-          {LOCATIONS.filter((loc) => loc.label === "Corporate Office").map(
-            (loc) => (
-              <div key={loc.label}>
-                <p className="flex items-center gap-2 text-[0.72rem] font-bold uppercase tracking-[0.12em] text-accent">
-                  <MapPin size={13} />
-                  {loc.label}
-                </p>
-                <p className="mt-2 text-[0.82rem] font-semibold text-ink">
-                  {loc.name}
-                </p>
-                <address className="mt-1 text-[0.78rem] not-italic leading-relaxed text-muted">
-                  {loc.lines.map((line) => (
-                    <span key={line} className="block">
-                      {line}
-                    </span>
-                  ))}
-                </address>
-                <a
-                  href={loc.mapUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block text-[0.76rem] font-semibold text-accent hover:text-accent-deep"
-                >
-                  Get directions →
-                </a>
-              </div>
-            )
-          )}
-
-          {STORES.map((store) => (
-            <div key={store.city}>
-              {/* City as the eyebrow rather than "Experience Centre" four
-                  times — the city is the only thing that distinguishes these
-                  at a glance, so it earns the prominent line. */}
-              <p className="flex items-center gap-2 text-[0.72rem] font-bold uppercase tracking-[0.12em] text-accent">
-                <MapPin size={13} />
-                {store.city}
-              </p>
-              <p className="mt-2 text-[0.82rem] font-semibold text-ink">
-                {store.building}
-              </p>
-              <address className="mt-1 text-[0.78rem] not-italic leading-relaxed text-muted">
-                {store.address.map((line) => (
-                  <span key={line} className="block">
-                    {line}
-                  </span>
-                ))}
-              </address>
-              <a
-                href={store.map}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block text-[0.76rem] font-semibold text-accent hover:text-accent-deep"
-              >
-                Get directions →
-              </a>
-            </div>
-          ))}
-        </div>
-
-        {/* Payment methods now sit on their own row. With five address blocks
-            filling the grid above, there is no half-row left to share. */}
-        <div className="mt-9 border-t border-line pt-8">
-          <p className="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-ink">
-            We accept
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {["UPI", "Visa", "Mastercard", "RuPay", "Net banking", "EMI", "COD"].map(
-              (method) => (
-                <span
-                  key={method}
-                  className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[0.72rem] font-medium text-muted"
-                >
-                  {method}
-                </span>
-              )
-            )}
-          </div>
-          <p className="mt-3 text-[0.72rem] leading-relaxed text-muted">
-            Card details are handled entirely by our payment provider. Officemate
-            never stores your card number.
-          </p>
-        </div>
+        {/* Deep-link band, then addresses last — see the order note at the
+            top of this file. */}
+        <FooterLinkCloud />
+        <FooterAddresses />
       </div>
 
       {/* ---------------------------------------------------- legal bar */}

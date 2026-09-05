@@ -1,0 +1,11 @@
+# Drop the official payment marks here.
+#
+# Expected filenames (see constants/payments.ts for sources and sizes):
+#   visa.svg   mastercard.svg   amex.svg      rupay.svg
+#   upi.svg    gpay.svg         phonepe.svg   paytm.svg
+#
+# Any file that is missing renders as a plain text chip instead, so the
+# footer works with none, some, or all of them present. Add one file and
+# that one logo appears; no code change needed.
+#
+# Only ship a mark the payment gateway is actually live for.
