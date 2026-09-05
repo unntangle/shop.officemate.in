@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import { Sparkles, ArrowRight, MessageCircle, Armchair, Activity } from "lucide-react";
+import { ArrowRight, MessageCircle, Armchair, Activity } from "lucide-react";
 import { Reveal } from "@/components/common/Reveal";
+import { OmateMark } from "@/components/common/OmateMark";
 
 /**
- * Homepage intro to oAI — Officemate's AI ergonomic advisor.
+ * Homepage intro to Omate AI — Officemate's AI ergonomic advisor.
  *
- * Rather than embedding the live chat here, the section introduces oAI as a
- * personality and invites the visitor to "chat and know your best chair." The
- * CTA carries them to /advisor where the real conversation happens.
+ * Rather than embedding the live chat here, the section introduces Omate AI as
+ * a personality and invites the visitor to "chat and know your best chair."
+ * The CTA carries them to /advisor where the real conversation happens.
  *
  * Palette: warm neutral (cream + walnut) grounds, with the brand's running
- * gradient reserved for oAI's own marks (the avatar halo and the CTA) so the
- * advisor reads as something a little more alive than the rest of the page.
+ * gradient reserved for Omate AI's own marks (the avatar halo and the CTA) so
+ * the advisor reads as something a little more alive than the rest of the page.
  */
 export function ErgonomicAdvisor() {
   const reduce = useReducedMotion();
@@ -23,21 +24,17 @@ export function ErgonomicAdvisor() {
     <section className="bg-surface py-14 md:py-16">
       <div className="container">
         <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-16">
-          {/* Left — who oAI is */}
+          {/* Left — who Omate AI is */}
           <Reveal>
-            <span className="inline-flex items-center rounded-full bg-cream px-3 py-1.5 text-xs font-semibold text-walnut">
-              Officemate AI Ergonomic Advisor
-            </span>
-
-            <h2 className="display mt-5 text-3xl font-semibold leading-[1.08] text-ink sm:text-4xl md:text-[2.75rem]">
-              Meet oAI, your
+            <h2 className="display text-3xl font-semibold leading-[1.08] text-ink sm:text-4xl md:text-[2.75rem]">
+              Meet Omate AI, your
               <br />
               ergonomic advisor.
             </h2>
 
             <p className="mt-5 text-lg leading-relaxed text-muted">
-              oAI is Officemate&apos;s AI ergonomic advisor. Tell it how you
-              work and where it hurts, and it&apos;ll help you{" "}
+              Omate AI is Officemate&apos;s AI ergonomic advisor. Tell it how
+              you work and where it hurts, and it&apos;ll help you{" "}
               <span className="font-semibold text-ink">
                 chat and know your best chair
               </span>{" "}
@@ -58,7 +55,7 @@ export function ErgonomicAdvisor() {
             </div>
           </Reveal>
 
-          {/* Right — the "Meet oAI" card */}
+          {/* Right — the "Meet Omate AI" card */}
           <Reveal>
             <div className="relative overflow-hidden rounded-3xl bg-card shadow-soft ring-1 ring-line/70">
               {/* soft gradient washes */}
@@ -78,7 +75,7 @@ export function ErgonomicAdvisor() {
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                   className="gradient-ring grid h-20 w-20 place-items-center"
                 >
-                  <Sparkles size={30} className="text-white" />
+                  <OmateMark className="h-8 w-8 text-white" />
                 </motion.div>
 
                 {/* Online status */}
@@ -94,7 +91,7 @@ export function ErgonomicAdvisor() {
 
                 {/* Name + role */}
                 <h3 className="display mt-4 text-2xl font-semibold text-ink">
-                  oAI
+                  Omate AI
                 </h3>
                 <p className="mt-1 text-sm font-medium text-walnut">
                   Your ergonomic advisor
@@ -102,8 +99,9 @@ export function ErgonomicAdvisor() {
 
                 {/* Tagline */}
                 <p className="mt-4 max-w-xs text-[0.95rem] leading-relaxed text-muted">
-                  Chat and know your best chair. Four quick questions, and oAI
-                  matches you to the one that actually fits how you sit.
+                  Chat and know your best chair. Four quick questions, and
+                  Omate AI matches you to the one that actually fits how you
+                  sit.
                 </p>
 
                 {/* The three-beat of what it does */}
@@ -127,15 +125,12 @@ export function ErgonomicAdvisor() {
                 {/* CTA — into the real chat on /advisor */}
                 <Link
                   href="/advisor"
-                  aria-label="Ask oAI"
+                  aria-label="Ask Omate AI"
                   className="gradient-pill group mt-7 text-[0.95rem]"
                 >
                   <span className="relative z-[1] inline-flex items-center gap-2">
-                    <Sparkles
-                      size={16}
-                      className="text-white/90 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110"
-                    />
-                    Ask oAI
+                    <OmateMark className="h-4 w-4 text-white/90 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+                    Ask Omate AI
                     <ArrowRight
                       size={15}
                       className="transition-transform duration-300 group-hover:translate-x-0.5"

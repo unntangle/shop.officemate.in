@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -68,6 +68,38 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [preview, setPreview] = useState<CategorySlug | null>(null);
+
+  /* Hover intent. A 300ms delay before opening means a pointer travelling
+     across the nav to reach something else doesn't flash three panels open on
+     the way past. Once a panel IS open, switching between triggers is
+     instant — the shopper has already committed to the menu, and delaying the
+     swap would feel like lag rather than restraint. */
+  const openTimer = useRef<number | null>(null);
+
+  const cancelOpen = () => {
+    if (openTimer.current !== null) {
+      window.clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  };
+
+  const scheduleOpen = (id: string) => {
+    cancelOpen();
+    if (openMenu) {
+      setOpenMenu(id);
+      return;
+    }
+    openTimer.current = window.setTimeout(() => setOpenMenu(id), 300);
+  };
+
+  const closeNow = () => {
+    cancelOpen();
+    setOpenMenu(null);
+  };
+
+  /* A pending timer that fires after unmount would set state on a dead
+     component. */
+  useEffect(() => cancelOpen, []);
 
   const activeMenu = SHOP_MENUS.find((m) => m.id === openMenu) ?? null;
 
@@ -241,7 +273,7 @@ export function Navbar() {
       --------------------------------------------------------------- */}
       <div
         className="relative hidden border-b border-line bg-white lg:block"
-        onMouseLeave={() => setOpenMenu(null)}
+        onMouseLeave={closeNow}
       >
         <div className="container">
           <nav
@@ -253,9 +285,17 @@ export function Navbar() {
               return (
                 <button
                   key={menu.id}
-                  onMouseEnter={() => setOpenMenu(menu.id)}
-                  onFocus={() => setOpenMenu(menu.id)}
-                  onClick={() => setOpenMenu(isOpen ? null : menu.id)}
+                  onMouseEnter={() => scheduleOpen(menu.id)}
+                  onFocus={() => {
+                    /* Keyboard focus opens immediately. Hover intent is about
+                       a pointer sweeping past; a tab press is deliberate. */
+                    cancelOpen();
+                    setOpenMenu(menu.id);
+                  }}
+                  onClick={() => {
+                    cancelOpen();
+                    setOpenMenu(isOpen ? null : menu.id);
+                  }}
                   aria-expanded={isOpen}
                   className={`flex h-full items-center gap-1.5 px-3.5 text-[0.85rem] font-medium transition-colors ${
                     isOpen ? "text-accent" : "text-ink hover:text-accent"
@@ -278,7 +318,7 @@ export function Navbar() {
               <Link
                 key={l.label}
                 href={l.href}
-                onMouseEnter={() => setOpenMenu(null)}
+                onMouseEnter={closeNow}
                 className="px-3 text-[0.85rem] text-muted transition-colors hover:text-ink"
               >
                 {l.label}

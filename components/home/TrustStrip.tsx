@@ -21,23 +21,39 @@ function endOfToday(): number {
   return d.getTime();
 }
 
+/**
+ * Time left until `target`.
+ *
+ * `left` starts as null rather than a computed value, and that is the whole
+ * point: the server renders at one instant and the browser hydrates at
+ * another, so anything derived from `Date.now()` during the first render is
+ * guaranteed to disagree across the boundary — a seconds field will differ
+ * on essentially every load. React reports that as a hydration error and
+ * throws away the server tree.
+ *
+ * So the first client render deliberately matches the server's "no value
+ * yet", and the real countdown starts in the effect, which never runs on the
+ * server. `ready` lets the caller hold the widget back until then.
+ */
 function useCountdown(target: number) {
-  const [left, setLeft] = useState(() => Math.max(0, target - Date.now()));
+  const [left, setLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    const id = window.setInterval(
-      () => setLeft(Math.max(0, target - Date.now())),
-      1000
-    );
+    const tick = () => setLeft(Math.max(0, target - Date.now()));
+    /* Tick once immediately so the countdown appears on the first frame
+       after mount rather than a second later. */
+    tick();
+    const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [target]);
 
-  const s = Math.floor(left / 1000);
+  const s = Math.floor((left ?? 0) / 1000);
   return {
+    ready: left !== null,
     hours: String(Math.floor(s / 3600)).padStart(2, "0"),
     minutes: String(Math.floor((s % 3600) / 60)).padStart(2, "0"),
     seconds: String(s % 60).padStart(2, "0"),
-    expired: left <= 0,
+    expired: left !== null && left <= 0,
   };
 }
 
@@ -54,15 +70,17 @@ function Unit({ value, label }: { value: string; label: string }) {
 
 export function TrustStrip() {
   const [target] = useState(endOfToday);
-  const { hours, minutes, seconds, expired } = useCountdown(target);
+  const { ready, hours, minutes, seconds, expired } = useCountdown(target);
 
   return (
     <section className="border-b border-line bg-white">
       <div className="container">
         <div className="flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:gap-6">
-          {/* Countdown. Hidden once it hits zero rather than showing 00:00:00,
-              which reads as a broken widget instead of an ended sale. */}
-          {!expired && (
+          {/* Countdown. Held back until the client has a real time (see
+              useCountdown), and hidden once it hits zero rather than showing
+              00:00:00, which reads as a broken widget instead of an ended
+              sale. */}
+          {ready && !expired && (
             <div className="flex shrink-0 items-center gap-3 rounded-xl border border-line bg-sand px-4 py-2.5">
               <div>
                 <p className="text-[0.7rem] font-bold uppercase tracking-wide text-accent">

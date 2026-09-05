@@ -35,12 +35,22 @@ export const SHOP_NAV: { label: string; href: string; highlight?: boolean }[] = 
   { label: "Offers", href: "/products?sort=discount", highlight: true },
 ];
 
-/** Hero banner carousel. */
+/**
+ * Hero banner carousel.
+ *
+ * PLACEHOLDER COPY — needs marketing sign-off before launch.
+ *
+ * Headings are held to three words to match the Frido reference, where the
+ * headline is the hook and the eyebrow above it carries the specifics.
+ * Anything longer wraps to a second line at `lg:text-[3rem]` and pushes the
+ * CTA out of a 25rem banner. `sub` is no longer rendered by HeroCarousel for
+ * the same reason; it is kept here in case the banner grows back.
+ */
 export const HERO_SLIDES = [
   {
     image: "/images/hero.webp",
     eyebrow: "Workspace Upgrade Sale",
-    heading: "Ergonomic chairs from ₹8,900",
+    heading: "Chairs from ₹8,900",
     sub: "Up to 30% off across the seating range. Free installation included.",
     cta: { label: "Shop chairs", href: "/products?category=office-chairs" },
     align: "left" as const,
@@ -56,7 +66,7 @@ export const HERO_SLIDES = [
   {
     image: "/images/omban1.webp",
     eyebrow: "Fit out a whole floor",
-    heading: "Volume pricing for 10+ seats",
+    heading: "Bulk orders, simplified",
     sub: "Workspace assessment, staggered delivery and a dedicated account team.",
     cta: { label: "Request a quote", href: "/contact?intent=bulk" },
     align: "left" as const,
@@ -129,16 +139,69 @@ export const CATEGORY_TILES: {
   { label: "Pedestals & Storage", category: "office-storage" },
 ];
 
-/** Store locator rail. PLACEHOLDER addresses — confirm before launch. */
-export const STORES = [
-  { city: "Chennai", area: "T. Nagar", label: "Experience Centre", since: "2016" },
-  { city: "Chennai", area: "Chetpet", label: "Corporate Office", since: "2016" },
-  { city: "Bengaluru", area: "Indiranagar", label: "Studio", since: "2019" },
-  { city: "Hyderabad", area: "Gachibowli", label: "Studio", since: "2020" },
-  { city: "Pune", area: "Baner", label: "Studio", since: "2021" },
-  { city: "Mumbai", area: "Andheri East", label: "Studio", since: "2022" },
-  { city: "Coimbatore", area: "Race Course", label: "Studio", since: "2023" },
-  { city: "Kochi", area: "Kakkanad", label: "Studio", since: "2024" },
+/**
+ * Officemate experience centres.
+ *
+ * Real addresses and Google Maps links, replacing the eight placeholder
+ * cities that were here before (Pune, Mumbai, Kochi and the Chetpet corporate
+ * office were invented for the build, as were the "since" years).
+ *
+ * ⚠ Hyderabad and Bengaluru currently share the SAME maps link
+ * (P3nHp2s2mbbWq5Nd9). That is almost certainly a copy-paste slip in the
+ * source, and it means "Get directions" on the Hyderabad card sends people to
+ * Bengaluru. Replace the Hyderabad URL before launch.
+ *
+ * `image` is a per-centre photograph. Note the Bengaluru file is spelled
+ * "bangalore" on disk while the city renders as "Bengaluru" — the path has to
+ * match the filename, not the label.
+ *
+ * `hours` is deliberately absent. Opening times are a factual claim about a
+ * real business and inventing them sends people to a closed door, so the card
+ * simply omits the pill until someone supplies them. Add e.g.
+ * `hours: "10:00 AM - 7:00 PM"` and it renders.
+ */
+export const STORES: {
+  city: string;
+  area: string;
+  building: string;
+  address: string[];
+  map: string;
+  image: string;
+  hours?: string;
+}[] = [
+  {
+    city: "Chennai",
+    area: "T. Nagar",
+    building: "ACE PLATINA",
+    address: ["72, G.N. Chetty Road", "T. Nagar, Chennai", "Tamil Nadu - 600 017"],
+    map: "https://maps.app.goo.gl/LaMAU9mbhKvwvUWC7",
+    image: "/images/experience-centre-chennai.webp",
+  },
+  {
+    city: "Coimbatore",
+    area: "Avinashi Road",
+    building: "B Kay Towers",
+    address: ["185, Avinashi Road", "Coimbatore", "Tamil Nadu - 641 014"],
+    map: "https://maps.app.goo.gl/W7LAyU8oegKT4gq17",
+    image: "/images/experience-centre-coimbatore.webp",
+  },
+  {
+    city: "Bengaluru",
+    area: "Indira Nagar",
+    building: "782",
+    address: ["9th A Main Road", "Indira Nagar", "Bengaluru - 560 038"],
+    map: "https://maps.app.goo.gl/P3nHp2s2mbbWq5Nd9",
+    image: "/images/experience-centre-bangalore.webp",
+  },
+  {
+    city: "Hyderabad",
+    area: "Gachibowli",
+    building: "Enza Furnitures",
+    address: ["8-25/14/83/1/3", "Gachibowli, Hyderabad", "Telangana - 500 032"],
+    /* ⚠ Duplicate of the Bengaluru link — see the note above. */
+    map: "https://maps.app.goo.gl/P3nHp2s2mbbWq5Nd9",
+    image: "/images/experience-centre-hyderabad.webp",
+  },
 ];
 
 /** Bank offer chips. PLACEHOLDER — replace with live issuer agreements. */

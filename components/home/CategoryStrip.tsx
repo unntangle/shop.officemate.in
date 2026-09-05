@@ -34,7 +34,7 @@ import { Rail } from "@/components/common/Rail";
  */
 export function CategoryStrip() {
   return (
-    <section className="border-b border-line bg-white py-6 md:py-8">
+    <section className="border-b border-line bg-white py-5 md:py-6">
       <div className="container">
         {/* `safe center` rather than plain `center`.
 
@@ -58,24 +58,24 @@ export function CategoryStrip() {
               <Link
                 key={category.slug}
                 href={`/products?category=${category.slug}`}
-                className="group flex w-[5.75rem] flex-col items-center text-center md:w-[7rem]"
+                className="group flex shrink-0 flex-col items-center text-center"
               >
                 {/* rounded-xl (16px), not the 24px the product cards use.
-                    Corner radius has to scale with the tile: 24px on an 88px
+                    Corner radius has to scale with the tile: 24px on a 72px
                     square eats most of the corner and drifts toward a circle. */}
-                <div className="relative h-[4.75rem] w-[4.75rem] overflow-hidden rounded-xl bg-surface md:h-[5.5rem] md:w-[5.5rem]">
+                <div className="relative h-16 w-16 overflow-hidden rounded-xl bg-surface md:h-[4.5rem] md:w-[4.5rem]">
                   <Image
                     src={image}
                     alt=""
                     fill
-                    sizes="(max-width: 768px) 76px, 88px"
+                    sizes="(max-width: 768px) 64px, 72px"
                     className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                   />
                   {/* Tint on hover. Sits above the photo rather than on the
                       well, so the frame itself stays completely static. */}
                   <span className="pointer-events-none absolute inset-0 bg-accent/0 transition-colors duration-300 group-hover:bg-accent/10" />
                 </div>
-                <p className="mt-2.5 text-[0.78rem] font-medium leading-snug text-ink transition-colors group-hover:text-accent md:text-[0.82rem]">
+                <p className="mt-2.5 whitespace-nowrap text-[0.78rem] font-medium leading-snug text-ink transition-colors group-hover:text-accent md:text-[0.82rem]">
                   {category.name}
                 </p>
               </Link>

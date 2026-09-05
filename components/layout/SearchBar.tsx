@@ -12,22 +12,18 @@ import { formatINR } from "@/lib/commerce";
 import { cn } from "@/lib/utils";
 
 /**
- * Product names cycled through the animated placeholder.
+ * Strings cycled through the animated placeholder.
  *
- * Curated by hand rather than pulled from the catalogue. Two reasons: the
- * demo records in `constants/products.ts` still carry the old "Aeris" prefix,
- * which would advertise the wrong brand in the header; and a placeholder that
- * suggests a model with no photography sends people to a thin page. Keep this
- * to models that are photographed, in stock and worth landing on.
+ * Categories, not model names. A placeholder is a suggestion about how to
+ * search, and "Zenpro" only helps someone who already knows the model — which
+ * is exactly the shopper who does not need the hint. Categories tell a first
+ * time visitor what this store actually sells.
+ *
+ * Derived from CATEGORIES rather than hand-listed so the header can never
+ * advertise a category that has been renamed or removed. Lowercased because
+ * the string renders mid-sentence, after "Search for".
  */
-const TYPED_SUGGESTIONS = [
-  "Zenpro",
-  "Altura sit-stand desk",
-  "Webstar",
-  "Jupiter",
-  "Ferro",
-  "executive chairs",
-];
+const TYPED_SUGGESTIONS = CATEGORIES.map((c) => c.name.toLowerCase());
 
 const STATIC_PLACEHOLDER = "Search chairs, desks, storage…";
 
@@ -52,7 +48,7 @@ function useTypewriter(words: string[], enabled: boolean) {
     const complete = !deleting && text === word;
     const cleared = deleting && text === "";
 
-    /* Hold long enough to actually read the name, clear quickly. */
+    /* Hold long enough to actually read the phrase, clear quickly. */
     const delay = complete ? 1800 : cleared ? 200 : deleting ? 35 : 80;
 
     const timer = window.setTimeout(() => {

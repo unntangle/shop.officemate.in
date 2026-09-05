@@ -17,11 +17,15 @@ import { cn } from "@/lib/utils";
  * mobile it drops below the title, because a floated link beside a centred
  * heading on a narrow screen just crowds it.
  *
- * `align="left"` is still available for inner pages (search results, category
- * listings) where a centred head over a filtered grid would read as odd.
+ * `align` defaults to "left" with `rule` on: title hard against the container
+ * edge, a short accent bar under it, description below, and any "View all"
+ * link pinned right on the title's baseline. That is the house style for every
+ * section head on the storefront — changing these defaults restyles the whole
+ * site at once, which is the point of them living here rather than at each
+ * call site.
  *
- * Distinct from the showcase `SectionHeading` used on the marketing pages,
- * which is larger and carries an accent rule.
+ * `align="center"` is still available for the occasional band that wants it,
+ * and `rule={false}` turns the bar off.
  */
 export function SectionHead({
   kicker,
@@ -29,7 +33,8 @@ export function SectionHead({
   description,
   href,
   linkLabel = "View all",
-  align = "center",
+  align = "left",
+  rule = true,
   className,
 }: {
   kicker?: string;
@@ -38,6 +43,7 @@ export function SectionHead({
   href?: string;
   linkLabel?: string;
   align?: "left" | "center";
+  rule?: boolean;
   className?: string;
 }) {
   const link = href ? (
@@ -64,6 +70,9 @@ export function SectionHead({
         <div>
           {kicker && <p className="kicker mb-1.5">{kicker}</p>}
           <h2 className="section-title">{title}</h2>
+          {rule && (
+            <span className="mt-2 block h-[3px] w-12 rounded-full bg-accent" />
+          )}
           {description && (
             <p className="mt-2.5 max-w-xl text-sm text-muted">{description}</p>
           )}
@@ -78,6 +87,9 @@ export function SectionHead({
       <div className="mx-auto max-w-2xl text-center">
         {kicker && <p className="kicker mb-2">{kicker}</p>}
         <h2 className="section-title">{title}</h2>
+        {rule && (
+          <span className="mx-auto mt-2.5 block h-[3px] w-12 rounded-full bg-accent" />
+        )}
         {description && (
           <p className="mx-auto mt-3 max-w-xl text-[0.9rem] leading-relaxed text-muted md:text-[0.95rem]">
             {description}

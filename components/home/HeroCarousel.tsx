@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HERO_SLIDES } from "@/constants/home";
 import { EASE } from "@/lib/motion";
 
@@ -30,22 +30,39 @@ export function HeroCarousel() {
     [index]
   );
 
+  /* Autoplay is NOT gated on `reduce`.
+
+     It used to be, and that was wrong: a shopper with reduced motion turned
+     on — which is the default on Windows once "show animations" is off — saw
+     slide one and only slide one, forever. Two of the three offers simply
+     never existed for them. Reduced motion should suppress the sliding
+     transition, not the content rotation, so the interval runs for everyone
+     and `variants` below swaps the slide for a crossfade instead. */
   useEffect(() => {
-    if (reduce || paused) return;
+    if (paused) return;
     const id = window.setInterval(() => {
       setDir(1);
       setIndex((i) => (i + 1) % HERO_SLIDES.length);
-    }, 5500);
+    }, 3000);
     return () => window.clearInterval(id);
-  }, [reduce, paused]);
+  }, [paused]);
 
   const slide = HERO_SLIDES[index];
 
-  const variants = {
-    enter: (d: number) => ({ x: d > 0 ? "100%" : "-100%", opacity: 0.4 }),
-    center: { x: 0, opacity: 1 },
-    exit: (d: number) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0.4 }),
-  };
+  /* Always a real variants object. Passing `undefined` here while `initial`
+     and `animate` were still variant *labels* left framer resolving names
+     against nothing. */
+  const variants = reduce
+    ? {
+        enter: { opacity: 0 },
+        center: { opacity: 1 },
+        exit: { opacity: 0 },
+      }
+    : {
+        enter: (d: number) => ({ x: d > 0 ? "100%" : "-100%", opacity: 0.4 }),
+        center: { x: 0, opacity: 1 },
+        exit: (d: number) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0.4 }),
+      };
 
   return (
     <section
@@ -57,12 +74,12 @@ export function HeroCarousel() {
       aria-roledescription="carousel"
       aria-label="Featured offers"
     >
-      <div className="relative h-[19rem] w-full overflow-hidden sm:h-[23rem] lg:h-[29rem]">
+      <div className="relative h-[17rem] w-full overflow-hidden sm:h-[20rem] lg:h-[25rem]">
         <AnimatePresence initial={false} custom={dir} mode="sync">
           <motion.div
             key={index}
             custom={dir}
-            variants={reduce ? undefined : variants}
+            variants={variants}
             initial="enter"
             animate="center"
             exit="exit"
@@ -80,13 +97,17 @@ export function HeroCarousel() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Scrim, not the band colour. The headline sits on top of arbitrary
-           photography, so this gradient is carrying text contrast — lightening
-           it along with the section bands would make the hero copy fail on any
-           bright banner image. */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-scrim/85 via-scrim/50 to-transparent" />
+        {/* Scrim runs bottom-up, not left-right.
 
-        <div className="absolute inset-0 z-10 flex items-center">
+           The copy sits in the lower-left corner now rather than centred, so
+           a horizontal gradient would be darkening the wrong half of the
+           frame — heavy where the product usually is and thin exactly where
+           the headline lands. This is carrying text contrast over arbitrary
+           photography, so it can't be lightened along with the section
+           bands. */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-scrim/85 via-scrim/35 to-transparent" />
+
+        <div className="absolute inset-0 z-10 flex items-end pb-12 lg:pb-16">
           <div className="container">
             <AnimatePresence mode="wait">
               <motion.div
@@ -95,61 +116,70 @@ export function HeroCarousel() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, y: -10 }}
                 transition={{ duration: 0.45, ease: EASE }}
-                className="max-w-md lg:max-w-lg"
+                className="max-w-lg lg:max-w-xl"
               >
-                <span className="inline-block rounded-full bg-accent px-3 py-1 text-[0.7rem] font-bold uppercase tracking-[0.08em] text-white">
+                {/* Two lines only, matching the reference: a light kicker
+                   over a bold headline, then the button. The longer `sub`
+                   copy in HERO_SLIDES is deliberately not rendered here — a
+                   third block of text made the stack taller than a 25rem
+                   banner could hold, which is why the headline was riding up
+                   into the middle of the frame. The field is left in the data
+                   for whatever replaces this. */}
+                <span className="block text-[0.95rem] text-white/85 sm:text-[1.05rem]">
                   {slide.eyebrow}
                 </span>
-                <h1 className="mt-3 text-[1.8rem] font-bold leading-[1.1] tracking-[-0.03em] text-white sm:text-[2.3rem] lg:text-[3rem]">
+                <h1 className="mt-1 text-[1.9rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white sm:text-[2.4rem] lg:text-[3rem]">
                   {slide.heading}
                 </h1>
-                <p className="mt-2.5 max-w-sm text-[0.85rem] leading-relaxed text-white/85 sm:text-[0.95rem]">
-                  {slide.sub}
-                </p>
                 <Link
                   href={slide.cta.href}
-                  className="group mt-5 inline-flex h-12 items-center gap-2 rounded-full bg-accent px-7 text-sm font-semibold text-white shadow-accent transition-all hover:bg-accent-deep active:scale-[0.98]"
+                  className="mt-5 inline-flex h-12 items-center rounded-full bg-accent px-7 text-[0.875rem] font-semibold text-white transition-all hover:bg-accent-deep active:scale-[0.98]"
                 >
                   {slide.cta.label}
-                  <ArrowRight
-                    size={16}
-                    className="transition-transform duration-300 group-hover:translate-x-1"
-                  />
                 </Link>
               </motion.div>
             </AnimatePresence>
           </div>
         </div>
 
-        <button
-          onClick={() => go(index - 1)}
-          aria-label="Previous banner"
-          className="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur-sm transition-all hover:bg-white/25 md:flex"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <button
-          onClick={() => go(index + 1)}
-          aria-label="Next banner"
-          className="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur-sm transition-all hover:bg-white/25 md:flex"
-        >
-          <ChevronRight size={20} />
-        </button>
+        {/* Dots and arrows sit together in the bottom-right corner rather
+           than on the mid-edges. Mid-edge arrows overlap the product in a
+           banner this short, and they compete with the CTA for the same
+           horizontal band. Grouping them corners all the chrome away from the
+           copy. */}
+        <div className="absolute bottom-5 right-5 z-10 flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            {HERO_SLIDES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => go(i)}
+                aria-label={`Banner ${i + 1} of ${HERO_SLIDES.length}`}
+                aria-current={i === index}
+                className="h-1 rounded-full transition-all duration-300"
+                style={{
+                  width: i === index ? 26 : 10,
+                  background: i === index ? "#fff" : "rgba(255,255,255,0.5)",
+                }}
+              />
+            ))}
+          </div>
 
-        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
-          {HERO_SLIDES.map((_, i) => (
+          <div className="hidden items-center gap-2 md:flex">
             <button
-              key={i}
-              onClick={() => go(i)}
-              aria-label={`Banner ${i + 1} of ${HERO_SLIDES.length}`}
-              aria-current={i === index}
-              className="h-1.5 rounded-full transition-all duration-300"
-              style={{
-                width: i === index ? 22 : 8,
-                background: i === index ? "#fff" : "rgba(255,255,255,0.45)",
-              }}
-            />
-          ))}
+              onClick={() => go(index - 1)}
+              aria-label="Previous banner"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow-soft transition-colors hover:bg-surface"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={() => go(index + 1)}
+              aria-label="Next banner"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow-soft transition-colors hover:bg-surface"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </section>

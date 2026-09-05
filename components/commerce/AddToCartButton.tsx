@@ -20,6 +20,7 @@ export function AddToCartButton({
   color,
   qty = 1,
   variant = "solid",
+  shape = "pill",
   size = "md",
   fullWidth = true,
   label = "Add to cart",
@@ -28,7 +29,10 @@ export function AddToCartButton({
   product: Product;
   color?: string;
   qty?: number;
-  variant?: "solid" | "outline";
+  /** `dark` matches the charcoal Get-directions button on the store cards. */
+  variant?: "solid" | "outline" | "dark";
+  /** `pill` is the storefront default; `rounded` is the softer card style. */
+  shape?: "pill" | "rounded";
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
   label?: string;
@@ -45,10 +49,18 @@ export function AddToCartButton({
     lg: "h-[3.25rem] px-7 text-[0.95rem]",
   }[size];
 
+  /* Case travels with shape, not with size. The pill is the loud storefront
+     CTA and carries uppercase + tracking; the rounded card button is quieter
+     and sets its label in sentence case, matching Get directions. */
+  const shapes = {
+    pill: "rounded-full uppercase tracking-[0.04em]",
+    rounded: "rounded-xl",
+  }[shape];
+
   const variants = {
     solid: "bg-accent text-white hover:bg-accent-deep shadow-accent",
-    outline:
-      "border border-accent bg-white text-accent hover:bg-accent-soft",
+    outline: "border border-accent bg-white text-accent hover:bg-accent-soft",
+    dark: "bg-night text-white hover:bg-night-deep",
   }[variant];
 
   if (!available) {
@@ -57,8 +69,9 @@ export function AddToCartButton({
         type="button"
         disabled
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-full font-semibold",
+          "inline-flex items-center justify-center gap-2 font-semibold",
           "cursor-not-allowed border border-line bg-surface text-muted",
+          shapes,
           sizes,
           fullWidth && "w-full",
           className
@@ -78,10 +91,11 @@ export function AddToCartButton({
         window.setTimeout(() => setAdded(false), 1400);
       }}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full font-semibold uppercase tracking-[0.04em]",
+        "inline-flex items-center justify-center gap-2 font-semibold",
         "transition-all duration-300 active:scale-[0.98]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
         added ? "bg-save text-white shadow-none" : variants,
+        shapes,
         sizes,
         fullWidth && "w-full",
         className

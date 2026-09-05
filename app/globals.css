@@ -162,10 +162,14 @@
 
   /* Retail sections. Frido's rhythm is generous — blocks are separated by
      white space rather than by rules or borders, which is what makes the page
-     read as calm despite carrying fifteen merchandising sections. Tightening
-     this is the fastest way to lose the look. */
+     read as calm despite carrying fifteen merchandising sections.
+
+     Tightened from py-14/py-20 now that the homepage runs four merchandising
+     sections rather than ten: with fewer blocks the original spacing left a
+     dead band between them rather than reading as breathing room. Do not go
+     much below this — cramped sections are the fastest way to lose the look. */
   .section-retail {
-    @apply py-14 md:py-20;
+    @apply py-10 md:py-14;
   }
 
   /* Centred kicker above a heavy headline — the single most repeated shape on
@@ -174,8 +178,14 @@
     @apply text-[0.8rem] font-normal tracking-normal text-muted;
   }
 
+  /* `capitalize` rather than retyping every title string: the transform is
+     presentational, so the underlying copy in constants/ stays sentence case
+     and screen readers still read it normally. Note CSS capitalises EVERY
+     word, including small ones — "Shop By Category", not "Shop by Category".
+     True title case that skips articles and prepositions would mean editing
+     the strings by hand. */
   .section-title {
-    @apply text-[1.5rem] font-bold leading-[1.15] tracking-[-0.02em] text-ink sm:text-[1.9rem] md:text-[2.25rem];
+    @apply text-[1.5rem] font-semibold capitalize leading-[1.15] tracking-[-0.02em] text-ink sm:text-[1.9rem] md:text-[2.25rem];
   }
 
   /* Horizontal product/category rails. Snap points matter more than they look:

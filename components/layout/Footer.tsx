@@ -10,6 +10,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { LOCATIONS, SITE } from "@/constants/site";
+import { STORES } from "@/constants/home";
 import { CATEGORIES } from "@/constants/categories";
 
 /**
@@ -175,26 +176,67 @@ export function Footer() {
           <Column title="Company" links={COMPANY_LINKS} />
         </div>
 
-        {/* ---------------------------------------------- addresses */}
-        <div className="mt-11 grid gap-6 border-t border-line pt-8 sm:grid-cols-2 lg:grid-cols-4">
-          {LOCATIONS.map((loc) => (
-            <div key={loc.label}>
+        {/* ---------------------------------------------- addresses
+
+            The corporate office comes from LOCATIONS; the experience centres
+            come from STORES, the same list the homepage rail renders. That is
+            deliberate: LOCATIONS also carries a single Chennai experience
+            centre, and rendering both lists would print Chennai twice and
+            leave the other three centres invisible. STORES is the source of
+            truth for retail locations — add one there and it appears here, on
+            the homepage and in the count on the store rail's "N locations"
+            link, all at once. */}
+        <div className="mt-11 grid gap-6 border-t border-line pt-8 sm:grid-cols-2 lg:grid-cols-5">
+          {LOCATIONS.filter((loc) => loc.label === "Corporate Office").map(
+            (loc) => (
+              <div key={loc.label}>
+                <p className="flex items-center gap-2 text-[0.72rem] font-bold uppercase tracking-[0.12em] text-accent">
+                  <MapPin size={13} />
+                  {loc.label}
+                </p>
+                <p className="mt-2 text-[0.82rem] font-semibold text-ink">
+                  {loc.name}
+                </p>
+                <address className="mt-1 text-[0.78rem] not-italic leading-relaxed text-muted">
+                  {loc.lines.map((line) => (
+                    <span key={line} className="block">
+                      {line}
+                    </span>
+                  ))}
+                </address>
+                <a
+                  href={loc.mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-[0.76rem] font-semibold text-accent hover:text-accent-deep"
+                >
+                  Get directions →
+                </a>
+              </div>
+            )
+          )}
+
+          {STORES.map((store) => (
+            <div key={store.city}>
+              {/* City as the eyebrow rather than "Experience Centre" four
+                  times — the city is the only thing that distinguishes these
+                  at a glance, so it earns the prominent line. */}
               <p className="flex items-center gap-2 text-[0.72rem] font-bold uppercase tracking-[0.12em] text-accent">
                 <MapPin size={13} />
-                {loc.label}
+                {store.city}
               </p>
               <p className="mt-2 text-[0.82rem] font-semibold text-ink">
-                {loc.name}
+                {store.building}
               </p>
               <address className="mt-1 text-[0.78rem] not-italic leading-relaxed text-muted">
-                {loc.lines.map((line) => (
+                {store.address.map((line) => (
                   <span key={line} className="block">
                     {line}
                   </span>
                 ))}
               </address>
               <a
-                href={loc.mapUrl}
+                href={store.map}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-2 inline-block text-[0.76rem] font-semibold text-accent hover:text-accent-deep"
@@ -203,28 +245,30 @@ export function Footer() {
               </a>
             </div>
           ))}
+        </div>
 
-          <div className="sm:col-span-2">
-            <p className="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-ink">
-              We accept
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {["UPI", "Visa", "Mastercard", "RuPay", "Net banking", "EMI", "COD"].map(
-                (method) => (
-                  <span
-                    key={method}
-                    className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[0.72rem] font-medium text-muted"
-                  >
-                    {method}
-                  </span>
-                )
-              )}
-            </div>
-            <p className="mt-3 text-[0.72rem] leading-relaxed text-muted">
-              Card details are handled entirely by our payment provider. Officemate
-              never stores your card number.
-            </p>
+        {/* Payment methods now sit on their own row. With five address blocks
+            filling the grid above, there is no half-row left to share. */}
+        <div className="mt-9 border-t border-line pt-8">
+          <p className="text-[0.72rem] font-bold uppercase tracking-[0.12em] text-ink">
+            We accept
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {["UPI", "Visa", "Mastercard", "RuPay", "Net banking", "EMI", "COD"].map(
+              (method) => (
+                <span
+                  key={method}
+                  className="rounded-md border border-line bg-white px-2.5 py-1.5 text-[0.72rem] font-medium text-muted"
+                >
+                  {method}
+                </span>
+              )
+            )}
           </div>
+          <p className="mt-3 text-[0.72rem] leading-relaxed text-muted">
+            Card details are handled entirely by our payment provider. Officemate
+            never stores your card number.
+          </p>
         </div>
       </div>
 

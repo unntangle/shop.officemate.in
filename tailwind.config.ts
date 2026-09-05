@@ -112,7 +112,19 @@ const config: Config = {
         card: "#FFFFFF",
       },
       fontFamily: {
-        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        /* Both names are set by next/font in app/layout.tsx. Keep them in
+           sync with the `variable` option there — a mismatch does not error,
+           it just silently resolves to the system-ui fallback.
+
+           No separate display face is loaded today, so `--font-display` falls
+           back to `--font-sans` rather than to system-ui. Without the nested
+           fallback, every `font-display` heading on the site renders in Segoe
+           UI while the body renders in Jakarta. */
+        display: [
+          "var(--font-display, var(--font-sans))",
+          "system-ui",
+          "sans-serif",
+        ],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       letterSpacing: {
