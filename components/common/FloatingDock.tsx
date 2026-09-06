@@ -45,6 +45,9 @@ const ACTIONS = [
        visibly different shades. */
     className: "bg-night",
     labelClass: "bg-night",
+    /* Draws the running gradient outline on hover. Omate AI only — see the
+       note on <DockBeam />. */
+    beam: true,
   },
   {
     id: "whatsapp",
@@ -59,6 +62,7 @@ const ACTIONS = [
     background: WHATSAPP_GREEN,
     className: "",
     labelClass: "",
+    beam: false,
   },
   {
     id: "stores",
@@ -69,14 +73,18 @@ const ACTIONS = [
     background: undefined as string | undefined,
     className: "bg-night",
     labelClass: "bg-night",
+    beam: false,
   },
 ];
 
 /* The link is just a positioning context now — the coloured disc is an inner
    span, so the label can be painted BEFORE it in the DOM and therefore behind
    it. That ordering is what lets the label run under the circle instead of
-   butting against its edge. */
-const rowShell = "group relative flex items-center";
+   butting against its edge.
+
+   `dock-sweep` is the hover/focus trigger for the running outline
+   (globals.css). Harmless on the rows that carry no beam. */
+const rowShell = "dock-sweep group relative flex items-center";
 
 /* Shadow is handed off on hover. At rest the disc carries the elevation; once
    the label has unrolled, the label carries it and the disc drops its own.
@@ -89,10 +97,24 @@ const discShell =
 /* Label sits to the LEFT of the column. Above or below would collide with the
    next disc in the stack.
 
-   It spans the FULL row — `right-0`, not `right-6` — so it runs the whole way
-   behind the disc rather than stopping at its centre. With `rounded-full`,
-   its right cap is a circle of exactly the disc's size sitting exactly under
-   it, so there is no edge to see. `pr-14` keeps the text clear of the icon.
+   TWO ELEMENTS, not one. `labelShell` is an unstyled sizing box; `labelPill`
+   is the thing that actually gets painted and wiped. The split exists so the
+   beam has somewhere to live that is NOT inside a clip-path — see the note on
+   <DockBeam /> below. If the beam is ever dropped, these can collapse back
+   into a single span.
+
+   The shell carries NO background, NO clip-path and NO z-index. All three
+   omissions are load-bearing: any of them would make it a stacking context,
+   and the beam inside it could no longer paint above the disc (a sibling of
+   the shell, at z-10). The head would vanish behind the circle for a quarter
+   of every lap. Width comes from the pill, which is in normal flow inside. */
+const labelShell = "pointer-events-none absolute right-0 flex h-12 items-center";
+
+/* The pill spans the FULL row — the shell is `right-0`, not `right-6` — so it
+   runs the whole way behind the disc rather than stopping at its centre. With
+   `rounded-full`, its right cap is a circle of exactly the disc's size sitting
+   exactly under it, so there is no edge to see. `pr-14` keeps the text clear
+   of the icon.
 
    The reveal is a clip-path wipe, not a fade: the pill is clipped to zero
    width against its own right edge at rest, so on hover it unrolls leftward
@@ -108,16 +130,77 @@ const discShell =
    curve `lib/motion` uses for every framer transition, so this moves like the
    rest of the page rather than like a bolted-on widget.
 
+   The 500ms duration is what the beam's 450ms start delay is tuned against.
+   Change one, change the other.
+
    No background here: each label takes its disc's colour, so the join is
    seamless. */
-const labelShell = [
-  "pointer-events-none absolute right-0 flex h-12 items-center",
-  "rounded-full pl-5 pr-14 text-[0.8rem] font-semibold text-white shadow-lift",
-  "whitespace-nowrap",
+const labelPill = [
+  "flex h-12 items-center rounded-full pl-5 pr-14",
+  "text-[0.8rem] font-semibold text-white shadow-lift whitespace-nowrap",
   "[clip-path:inset(0_0_0_100%_round_9999px)]",
   "transition-all duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
   "group-hover:[clip-path:inset(0_0_0_0_round_9999px)]",
 ].join(" ");
+
+/**
+ * The running outline — a light that laps the capsule on hover and leaves a
+ * gradient outline behind it, the same idea as the header search field.
+ *
+ * Two overlaid rects: the resting outline (`dock-track`) and the travelling
+ * dash (`dock-head`). All timing and colour lives in globals.css under
+ * `.dock-beam`; this is only geometry and the gradient.
+ *
+ * `rx` MUST be half the height, not an arbitrarily large number. CSS
+ * `border-radius: 9999px` clamps proportionally and gives a pill; SVG clamps
+ * rx and ry independently, so a large rx becomes half the WIDTH and the corner
+ * arcs meet in the middle — an ellipse, not a pill. The capsule is `h-12`
+ * (48px) and the svg is inset by the 2.5px stroke, so the drawn box is 45.5px
+ * tall and the radius is 22.75. Change this if the dock height OR the stroke
+ * width changes — both feed it.
+ *
+ * `pathLength={100}` normalises the perimeter so `stroke-dasharray: 16 84`
+ * means "16% of the way round" whatever the label says — a longer string gets
+ * the same proportioned streak rather than a shorter-looking one.
+ *
+ * The gradient is the Ask Omate AI palette, and it stays fixed in place while
+ * the dash travels through it, so the head shifts pink → violet → cyan as it
+ * laps instead of being one flat colour in motion.
+ *
+ * The id is hardcoded because exactly one dock renders per page. If this ever
+ * repeats, switch to React's useId — duplicate ids would make every instance
+ * resolve to the first one's gradient.
+ */
+function DockBeam() {
+  return (
+    <svg className="dock-beam" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="dock-beam-gradient" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#ec4899" />
+          <stop offset="28%" stopColor="#a855f7" />
+          <stop offset="52%" stopColor="#6366f1" />
+          <stop offset="76%" stopColor="#22d3ee" />
+          <stop offset="100%" stopColor="#3b82f6" />
+        </linearGradient>
+      </defs>
+
+      <rect
+        className="dock-track"
+        width="100%"
+        height="100%"
+        rx="22.75"
+        pathLength={100}
+      />
+      <rect
+        className="dock-head"
+        width="100%"
+        height="100%"
+        rx="22.75"
+        pathLength={100}
+      />
+    </svg>
+  );
+}
 
 export function FloatingDock() {
   return (
@@ -126,12 +209,17 @@ export function FloatingDock() {
         const inner = (
           <>
             {/* Label first in the DOM so the disc paints over its square
-                right-hand end. */}
-            <span
-              style={{ backgroundColor: action.background }}
-              className={`${labelShell} ${action.labelClass}`}
-            >
-              {action.label}
+                right-hand end. The beam is a sibling of the wiped pill, not a
+                child of it — see <DockBeam />. */}
+            <span className={labelShell}>
+              <span
+                style={{ backgroundColor: action.background }}
+                className={`${labelPill} ${action.labelClass}`}
+              >
+                {action.label}
+              </span>
+
+              {action.beam && <DockBeam />}
             </span>
 
             <span

@@ -104,20 +104,40 @@ export function ErgonomicAdvisor() {
                   sit.
                 </p>
 
-                {/* The three-beat of what it does */}
+                {/* The three-beat of what it does.
+
+                    Icons are 14px at strokeWidth 2.25, up from 13px at
+                    lucide's default 2. At 13px a 2-wide stroke on a 24-grid
+                    renders to about 1.08 device pixels — it lands between the
+                    pixel grid and greys out, which is why these read as faint
+                    next to the 0.72rem text beside them. The extra pixel of
+                    size and the heavier stroke together get the glyph back to
+                    a solid line. */}
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[0.72rem] font-medium text-muted">
                   <span className="inline-flex items-center gap-1.5">
-                    <MessageCircle size={13} className="text-walnut" />
+                    <MessageCircle
+                      size={14}
+                      strokeWidth={2.25}
+                      className="text-walnut"
+                    />
                     Tell it how you sit
                   </span>
                   <span className="text-line">•</span>
                   <span className="inline-flex items-center gap-1.5">
-                    <Armchair size={13} className="text-walnut" />
+                    <Armchair
+                      size={14}
+                      strokeWidth={2.25}
+                      className="text-walnut"
+                    />
                     Get matched
                   </span>
                   <span className="text-line">•</span>
                   <span className="inline-flex items-center gap-1.5">
-                    <Activity size={13} className="text-walnut" />
+                    <Activity
+                      size={14}
+                      strokeWidth={2.25}
+                      className="text-walnut"
+                    />
                     See your score
                   </span>
                 </div>

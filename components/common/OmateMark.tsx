@@ -15,6 +15,13 @@
  * inherits text colour and scales cleanly from the 16px CTA to the 30px
  * avatar. The spark is filled rather than stroked so it stays solid and
  * readable at small sizes, where a 1.6-wide outline would close up.
+ *
+ * Stroke width is 2.3 on the 24-grid. It was 1.9, which held up at avatar
+ * size but thinned out to near-invisible at the 16-20px the mark is used at
+ * in the CTA and the floating dock — a 1.9 stroke on a 24-grid rendered into
+ * 16px is 1.27 device pixels, so it lands between pixels and gets
+ * anti-aliased into a grey smudge. 2.3 clears one full pixel at the smallest
+ * size while still reading as a line rather than a band on the avatar.
  */
 export function OmateMark({ className }: { className?: string }) {
   return (
@@ -30,7 +37,7 @@ export function OmateMark({ className }: { className?: string }) {
       <path
         d="M17.2 5.6A8.2 8.2 0 1 0 20.2 12"
         stroke="currentColor"
-        strokeWidth="1.9"
+        strokeWidth="2.3"
         strokeLinecap="round"
       />
       {/* Four-point spark in the gap. */}

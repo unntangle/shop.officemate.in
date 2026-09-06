@@ -325,6 +325,107 @@
   .coupon {
     @apply rounded-xl border border-dashed border-line bg-white;
   }
+
+  /* ------------------------------------------------------------------
+     Floating dock — Omate AI running outline.
+
+     Same mechanism as the search field above (SVG stroke + travelling
+     dash + `pathLength="100"`), and it reuses `beam-run` and `beam-fade`
+     outright rather than declaring near-identical keyframes. Read the
+     `.search-beam` block first; everything there applies here.
+
+     THREE THINGS ARE DIFFERENT:
+
+     1. THE STROKE IS A GRADIENT, not a flat red. `url(#dock-beam-gradient)`
+        points at a <linearGradient> defined inside the SVG itself (see
+        DockBeam in FloatingDock.tsx) carrying the Ask Omate AI palette. The
+        gradient is fixed in place while the dash travels through it, so the
+        head changes colour as it laps — pink at the left, cyan at the right.
+        A gradient that rotated with the head would just be a moving blob of
+        one colour at a time.
+
+     2. IT IS DELAYED BY 0.45s. The label pill unrolls from behind the disc
+        over 0.5s; starting the beam at 0 would draw an outline around a
+        capsule that has not finished existing yet, and the head would run
+        through empty space. The delay lets the shape settle first. If the
+        wipe duration in `labelPill` changes, change this to match.
+
+     3. HOVER, NOT FOCUS-WITHIN. The dock row is a link, so the trigger is
+        `:hover` on the row plus `:focus-visible` for keyboard. Both live on
+        `.dock-sweep`, which is the <Link> itself.
+
+     The beam is deliberately NOT inside the clipped pill. `clip-path`
+     creates a stacking context, so a beam nested in the wipe layer would be
+     both clipped mid-animation and trapped underneath the disc. It sits as a
+     sibling of that layer, inside an unclipped sizing box, at a z-index above
+     the disc — which is why the head stays visible as it crosses the circle
+     rather than disappearing for a quarter of its lap.
+  ------------------------------------------------------------------ */
+  .dock-beam {
+    position: absolute;
+    /* Inset by HALF THE STROKE, so the stroke (which straddles the path)
+       lands on the capsule's edge rather than half outside it. This is tied
+       to `stroke-width` below — at 2.5px the inset is 1.25px. Change one and
+       you must change the other, or the ring sits proud of the pill. */
+    top: 1.25px;
+    left: 1.25px;
+    width: calc(100% - 2.5px);
+    height: calc(100% - 2.5px);
+    overflow: visible;
+    pointer-events: none;
+    /* Above the disc's z-10. The parent sizing box must NOT set a z-index or
+       a clip-path, or it becomes a stacking context and traps this. */
+    z-index: 30;
+  }
+
+  .dock-beam rect {
+    fill: none;
+    /* 2.5px, noticeably heavier than the search field's 1.5px. The search
+       ring runs on a pale surface across a 1000px field, where a hairline is
+       plenty; this one runs on near-black at roughly a sixth of the width, so
+       the same weight reads as a faint scratch. Do not push much past 3px —
+       beyond that it stops being a light tracing an edge and starts looking
+       like a coloured border that happens to move. */
+    stroke-width: 2.5;
+  }
+
+  .dock-track {
+    stroke: url(#dock-beam-gradient);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+
+  .dock-sweep:hover .dock-track,
+  .dock-sweep:focus-visible .dock-track {
+    opacity: 1;
+    /* 0.45s delay + 0.95s lap = 1.4s. Held to 1.35s so the outline is
+       arriving as the head fades rather than after a blank beat. Keep in
+       step with the animation shorthand below. */
+    transition-delay: 1.35s;
+  }
+
+  .dock-head {
+    stroke: url(#dock-beam-gradient);
+    stroke-linecap: round;
+    stroke-dasharray: 16 84;
+    stroke-dashoffset: 100;
+    opacity: 0;
+    /* Violet halo rather than one colour per stop — a drop-shadow takes a
+       single colour, and the mid-palette purple is the least wrong against
+       both the pink and the cyan ends.
+
+       Scaled up with the stroke: a halo has to stay small relative to the
+       line or the head reads as a smear next to the crisp resting outline.
+       At 2.5px of stroke, 3px of shadow is about the ceiling. */
+    filter: drop-shadow(0 0 3px rgba(168, 85, 247, 0.6));
+  }
+
+  .dock-sweep:hover .dock-head,
+  .dock-sweep:focus-visible .dock-head {
+    animation:
+      beam-run 0.95s linear 0.45s 1,
+      beam-fade 0.95s linear 0.45s 1;
+  }
 }
 
 @layer utilities {
@@ -489,8 +590,14 @@
     /* Crisp gradient border via two clipped backgrounds: the running conic
        gradient painted on a real (transparent) border (border-box), over a
        solid dark fill (padding-box). This anti-aliases rounded corners far
-       more cleanly than a masked ring, so no pixelated edges. */
-    border: 2px solid transparent;
+       more cleanly than a masked ring, so no pixelated edges.
+
+       2.5px, matching the dock's running outline. At 2px a six-stop gradient
+       has to fit every colour into a two-pixel band, so the individual hues
+       never resolve and the border reads as an indeterminate purple-grey
+       rather than as the palette. The extra half-pixel is what lets the pink
+       and cyan ends actually show. */
+    border: 2.5px solid transparent;
     background:
       linear-gradient(#0b0b12, #0b0b12) padding-box,
       conic-gradient(
@@ -514,11 +621,12 @@
   }
 
   /* Circular running-gradient halo — the oAI avatar. Same crisp double-clip
-     border as .gradient-pill, kept round. */
+     border as .gradient-pill, kept round and at the same 2.5px weight so the
+     avatar and the CTA below it read as one family. */
   .gradient-ring {
     position: relative;
     border-radius: 9999px;
-    border: 2px solid transparent;
+    border: 2.5px solid transparent;
     background:
       linear-gradient(#0b0b12, #0b0b12) padding-box,
       conic-gradient(
