@@ -13,6 +13,12 @@ import { cn } from "@/lib/utils";
  * payment step, including delivery. Revealing a shipping charge only at the
  * final screen is the single largest driver of cart abandonment in retail, and
  * it is entirely self-inflicted.
+ *
+ * COLOUR. Grey and charcoal for controls, green for money saved, red only for
+ * a rejected coupon code. Red used to also be the coupon field's focus colour,
+ * which meant an empty focused field and a failed code looked the same at a
+ * glance — on the one screen where a shopper is checking every number, that is
+ * the wrong thing to be ambiguous about.
  */
 export function OrderSummary({
   action,
@@ -60,7 +66,7 @@ export function OrderSummary({
             <button
               onClick={() => applyCoupon(null)}
               aria-label={`Remove coupon ${coupon.code}`}
-              className="shrink-0 text-muted transition-colors hover:text-accent"
+              className="shrink-0 text-muted transition-colors hover:text-ink"
             >
               <X size={15} />
             </button>
@@ -76,11 +82,11 @@ export function OrderSummary({
                 }}
                 placeholder="Coupon code"
                 aria-label="Coupon code"
-                className="h-11 min-w-0 flex-1 rounded-full border border-line bg-surface px-4 text-sm uppercase text-ink outline-none transition-colors placeholder:normal-case placeholder:text-muted focus:border-accent focus:bg-white"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 text-sm uppercase text-ink outline-none transition-colors placeholder:normal-case placeholder:text-muted focus:border-ink focus:bg-white"
               />
               <button
                 type="submit"
-                className="h-11 shrink-0 rounded-full border border-ink/15 px-5 text-[0.82rem] font-semibold text-ink transition-colors hover:border-ink hover:bg-surface"
+                className="h-11 shrink-0 rounded-xl border border-ink/15 px-5 text-[0.82rem] font-semibold text-ink transition-colors hover:border-ink hover:bg-surface"
               >
                 Apply
               </button>

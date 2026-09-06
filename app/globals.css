@@ -120,8 +120,31 @@
     @apply bg-canvas text-ink font-sans antialiased;
   }
 
+  /* Kill the browser's own clear button on `<input type="search">`.
+
+     WebKit draws `::-webkit-search-cancel-button` inside the field, and the
+     header search already renders its own X. Two clear buttons side by side
+     is confusing on its own; worse, the native one is drawn in the OS accent
+     colour — blue on most machines — so it looked like a stray control that
+     had wandered in from another site.
+
+     `type="search"` is kept rather than swapped for `type="text"`: it is what
+     gives mobile keyboards a Search key and tells assistive tech the field is
+     a search box. Only the decoration is dropped.
+
+     Both properties are needed — Safari still requires the prefixed one. */
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   ::selection {
-    background: rgba(198, 40, 40, 0.15);
+    /* Kept in sync with `accent` in tailwind.config.ts — #EC1C24 is
+       rgb(236, 28, 36). A selection highlight cannot be a Tailwind class, so
+       this is one of four places in this file where the brand red is written
+       as a literal. Search for "236, 28, 36" and "#ec1c24" if it moves. */
+    background: rgba(236, 28, 36, 0.15);
     color: #2D2D2D;
   }
 
@@ -142,7 +165,7 @@
   input:focus-visible,
   textarea:focus-visible,
   [tabindex]:focus-visible {
-    outline: 2px solid #C62828;
+    outline: 2px solid #EC1C24;
     outline-offset: 2px;
   }
 }
@@ -261,7 +284,7 @@
   }
 
   .beam-track {
-    stroke: #c62828;
+    stroke: #ec1c24;
     opacity: 0;
     transition: opacity 0.35s ease;
   }
@@ -283,7 +306,7 @@
     /* Same red as the track, not a lighter pink. A different hue made the
        head read as a separate, fatter object rather than as the same line
        lit up. */
-    stroke: #c62828;
+    stroke: #ec1c24;
     stroke-linecap: round;
     /* 16% of the perimeter. Long enough to read as a streak with a tail;
        a shorter dash reads as a dot skidding around the edge. */
@@ -297,7 +320,7 @@
        as a ~5px smear sitting next to a crisp 1.5px outline, which is exactly
        the mismatch this is fixing. At 2px and low opacity the core stays
        1.5px and the halo registers as light rather than as weight. */
-    filter: drop-shadow(0 0 2px rgba(198, 40, 40, 0.45));
+    filter: drop-shadow(0 0 2px rgba(236, 28, 36, 0.45));
   }
 
   .search-sweep:focus-within .beam-head {

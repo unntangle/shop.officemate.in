@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   Facebook,
   Instagram,
@@ -117,13 +116,19 @@ export function Footer() {
       <div className="container py-12 md:py-14">
         <div className="grid gap-9 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-1">
-            {/* No invert filter — see the note at the top of this file. */}
-            <Image
-              src="/images/logo.webp"
+            {/* No invert filter — see the note at the top of this file.
+
+                The vector, at a height chosen for its 12.19:1 aspect rather
+                than the webp's 8.9:1. Plain <img> because the SVG optimizer
+                is off; see the sign-off block at the bottom of this file. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo.svg"
               alt={SITE.name}
-              width={140}
-              height={34}
-              className="h-8 w-auto object-contain"
+              width={739}
+              height={61}
+              decoding="async"
+              className="h-4 w-auto object-contain"
             />
             <p className="mt-4 max-w-xs text-[0.82rem] leading-relaxed text-muted">
               {SITE.tagline} — ergonomic seating, desks and storage engineered
@@ -194,13 +199,59 @@ export function Footer() {
         <FooterAddresses />
       </div>
 
-      {/* ---------------------------------------------------- legal bar */}
-      <div className="border-t border-line bg-white">
-        <div className="container flex flex-col gap-2 py-5 text-[0.75rem] text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>
+      {/* ---------------------------------------------------- legal bar
+
+          Copyright left, wordmark centred, company registration right — all
+          on one row. The logo had its own full-width band underneath this;
+          folding it in cuts a whole section of height off the end of every
+          page and stops the footer trailing away into two near-empty strips.
+
+          A THREE-COLUMN GRID, NOT `justify-between`. With flex, the middle
+          item sits between two unequal neighbours — the copyright runs about
+          250px and the CIN line about 350px — so the logo lands visibly left
+          of centre. Equal grid columns centre it against the page rather than
+          against its neighbours.
+
+          `bg-surface`, matching the main footer above rather than the white
+          it used to be. That makes the whole footer one ground; the hairline
+          is what separates the bar now.
+
+          `border-ink/15`, not `border-line`. See the same note in
+          FooterAddresses: `line` is #ECECEC against this #F5F5F5 ground,
+          about 4% apart, which is a border nobody can see. `line` is
+          calibrated for white surfaces.
+
+          The logo is not a link. One home already exists in the first footer
+          column and another in the header; a third adds a tab stop that goes
+          where the visitor has just been. `alt=""` for the same reason — the
+          company name is spelled out twice in the text either side of it.
+
+          h-5 (20px), about 244px at the vector's 12.19:1 aspect. Plain <img>
+          because the SVG optimizer is off; see the first footer column.
+
+          Stacks and centres below `sm`. Three items on one row at phone width
+          would leave the CIN — the longest string on the page, and one that
+          cannot be shortened — wrapping mid-number. */}
+      <div className="border-t border-ink/15 bg-surface">
+        <div className="container flex flex-col items-center gap-3 py-5 text-[0.75rem] text-muted sm:grid sm:grid-cols-3 sm:gap-6">
+          <p className="text-center sm:text-left">
             © {new Date().getFullYear()} {SITE.name}. All rights reserved.
           </p>
-          <p>Zebro Officemate Pvt Ltd · CIN placeholder — add before launch</p>
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/logo.svg"
+            alt=""
+            width={739}
+            height={61}
+            loading="lazy"
+            decoding="async"
+            className="h-5 w-auto shrink-0 object-contain sm:justify-self-center"
+          />
+
+          <p className="text-center sm:text-right">
+            Zebro Officemate Pvt Ltd · CIN {SITE.cin}
+          </p>
         </div>
       </div>
     </footer>

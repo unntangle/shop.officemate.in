@@ -8,6 +8,7 @@ import { useReducedMotion } from "framer-motion";
 import { Search, X } from "lucide-react";
 import { PRODUCTS, PRODUCT_IMAGES } from "@/constants/products";
 import { CATEGORIES, categoryName } from "@/constants/categories";
+import { CATEGORY_IMAGES } from "@/constants/home";
 import { formatINR } from "@/lib/commerce";
 import { cn } from "@/lib/utils";
 
@@ -79,13 +80,34 @@ function useTypewriter(words: string[], enabled: boolean) {
  * shoppers search by problem ("lumbar", "sit stand", "mesh") far more often
  * than by model, and a name-only match returns nothing for all of those.
  */
-export function SearchBar({ className }: { className?: string }) {
+export function SearchBar({
+  className,
+  autoFocus,
+}: {
+  className?: string;
+  /** Focus on mount. Only set by the header's expanding search row, where the
+      field exists BECAUSE someone just pressed the search button — focusing it
+      is finishing their gesture. Never set it on a field that is present on
+      load: stealing focus scrolls the page on mobile and traps a screen reader
+      in a search box the person never asked for. */
+  autoFocus?: boolean;
+}) {
   const router = useRouter();
   const reduce = useReducedMotion();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  /* Viewport Y of the panel's top edge, measured rather than assumed.
+
+     The popular-searches panel is full-bleed, so it cannot be positioned
+     against this component — it has to be `fixed` to the viewport, and a fixed
+     element needs a real number for `top`. The header's height is not a
+     constant: it changes with the announcement bar, and on mobile the search
+     field moves to a second row entirely. Hardcoding an offset would put the
+     panel in the wrong place on at least one of those. */
+  const [panelTop, setPanelTop] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   /* The typewriter can only start after mount. Rendering animated text during
      SSR would hand the client a different first frame than the server sent and
@@ -130,6 +152,45 @@ export function SearchBar({ className }: { className?: string }) {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
+
+  /* Escape closes too. Once the panel opens on focus rather than on typing, a
+     keyboard user who tabs into the field gets a panel they did not ask for,
+     and without this the only way out is to tab through every tile in it. */
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  /* Keep the fixed panel glued to the bottom of the field.
+
+     Re-measured on scroll as well as resize: the header is sticky, so the
+     field's viewport position is stable once the page has scrolled past the
+     top — but it MOVES during those first few hundred pixels as the page
+     slides under it. Without the scroll listener the panel detaches and floats
+     over the field on the way down.
+
+     `passive: true` because neither handler calls preventDefault, and a
+     non-passive scroll listener blocks the compositor on every frame. */
+  useEffect(() => {
+    if (!open) return;
+
+    const measure = () => {
+      const rect = wrapRef.current?.getBoundingClientRect();
+      if (rect) setPanelTop(rect.bottom + 8);
+    };
+
+    measure();
+    window.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("resize", measure, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", measure);
+    };
+  }, [open]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,6 +241,8 @@ export function SearchBar({ className }: { className?: string }) {
           />
           <input
             type="search"
+            ref={inputRef}
+            autoFocus={autoFocus}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -222,6 +285,79 @@ export function SearchBar({ className }: { className?: string }) {
           )}
         </div>
       </form>
+
+      {/* ------------------------------------------------ popular searches
+
+          Shown on focus, before there is anything to match on. An empty
+          dropdown is a wasted moment: the field has the shopper's full
+          attention and nothing to offer them, so this fills it with the eight
+          things the store actually sells.
+
+          Tiles rather than a text list, following the reference. At this size
+          a photograph identifies a category faster than its name does,
+          particularly for the ones whose names are internal vocabulary — "Tele
+          Pods" and "Leisure Lounges" mean very little cold, and the picture
+          explains both instantly.
+
+          Categories, not query strings. A "popular searches" list should be
+          driven by real query data, and there is none — inventing a ranking
+          would be a claim about shopper behaviour nobody has measured. These
+          are CATEGORIES in their defined order, which is honest and, until
+          analytics exist, just as useful. Swap the source when there is
+          something real to sort by.
+
+          `mousedown`, not `click`, on the outside-close handler above — a tile
+          click would otherwise fire after the panel had already closed.
+
+          FULL-BLEED, so `fixed` rather than `absolute`. An absolute panel is
+          bound by this component's width, which is the search field's width;
+          the reference runs edge to edge. `fixed` escapes the header's
+          container entirely, at the cost of needing a measured `top` — see
+          `panelTop` above.
+
+          The white surface spans the viewport; the tiles inside sit in a
+          `container`, so they line up with the logo and the nav above rather
+          than starting hard against the window edge. */}
+      {open && query.trim().length < 2 && (
+        <div
+          style={{ top: panelTop }}
+          className="fixed inset-x-0 z-50 border-y border-line bg-white py-5 shadow-lift"
+        >
+          <div className="container">
+            <p className="text-[0.85rem] font-semibold text-ink">
+              Popular searches
+            </p>
+
+            <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+              {CATEGORIES.map((c) => (
+                <Link
+                  key={c.slug}
+                  href={`/products?category=${c.slug}`}
+                  onClick={() => setOpen(false)}
+                  className="group text-center"
+                >
+                  {/* Square well, image contained inside it. The well stays
+                      put and only the photo scales on hover — eight tiles that
+                      each lift make the panel feel unstable. Same treatment as
+                      CategoryStrip and the mega menu. */}
+                  <span className="relative block aspect-square w-full overflow-hidden rounded-xl bg-surface">
+                    <Image
+                      src={CATEGORY_IMAGES[c.slug] ?? ""}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 160px, 33vw"
+                      className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                    />
+                  </span>
+                  <span className="mt-2.5 block text-[0.8rem] font-medium leading-tight text-muted transition-colors group-hover:text-ink">
+                    {c.name}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {open && query.trim().length >= 2 && (
         <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-2xl border border-line bg-white shadow-lift">
@@ -283,7 +419,7 @@ export function SearchBar({ className }: { className?: string }) {
 
               <button
                 onClick={submit}
-                className="w-full border-t border-line bg-surface py-2.5 text-[0.78rem] font-semibold text-accent transition-colors hover:bg-accent-soft"
+                className="w-full border-t border-line bg-surface py-2.5 text-[0.78rem] font-semibold text-ink transition-colors hover:bg-line"
               >
                 See all results for “{query}”
               </button>

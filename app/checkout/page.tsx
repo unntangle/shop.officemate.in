@@ -35,6 +35,19 @@ import { cn } from "@/lib/utils";
    Note this file deliberately collects NO card details. Card capture belongs
    inside the PSP's hosted fields or iframe, never in our own inputs — doing it
    here would drag the whole site into PCI-DSS scope for no benefit.
+
+   COLOUR: CHARCOAL ACTIONS, RED RESERVED FOR ERRORS.
+
+   Every button and selected state here is `night`, matching the cart drawer
+   and AddToCartButton's `dark` variant. Checkout is the one page where the
+   shopper is reading carefully and where a mistake costs them money, so the
+   page should be quiet and the only red on it should mean "you need to fix
+   this".
+
+   That is the real argument for the change, beyond consistency: when the
+   Continue button, the selected payment method and the validation message
+   were all red, the error message had nothing to distinguish it. Now a red
+   field border is the only red on the page and cannot be missed.
 ------------------------------------------------------------------------- */
 
 type Step = "address" | "payment" | "done";
@@ -144,7 +157,7 @@ export default function CheckoutPage() {
 
           <Link
             href="/products"
-            className="mt-7 inline-flex h-12 items-center rounded-full bg-accent px-7 text-sm font-semibold text-white transition-colors hover:bg-accent-deep"
+            className="mt-7 inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
           >
             Continue shopping
           </Link>
@@ -164,7 +177,7 @@ export default function CheckoutPage() {
         <p className="mt-2 text-sm text-muted">Your cart is empty.</p>
         <Link
           href="/products"
-          className="mt-6 inline-flex h-12 items-center rounded-full bg-accent px-7 text-sm font-semibold text-white transition-colors hover:bg-accent-deep"
+          className="mt-6 inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
         >
           Shop the range
         </Link>
@@ -196,7 +209,10 @@ export default function CheckoutPage() {
         aria-invalid={Boolean(errors[key])}
         className={cn(
           "h-11 w-full rounded-xl border bg-white px-3.5 text-sm text-ink outline-none transition-colors placeholder:text-muted",
-          errors[key] ? "border-accent" : "border-line focus:border-accent"
+          /* Red on the error state only — it is now the single red thing on
+             the page, which is what makes it read as a problem rather than as
+             more branding. */
+          errors[key] ? "border-accent" : "border-line focus:border-ink"
         )}
       />
       {errors[key] && (
@@ -236,7 +252,7 @@ export default function CheckoutPage() {
                     done
                       ? "bg-save text-white"
                       : active
-                        ? "bg-accent text-white"
+                        ? "bg-night text-white"
                         : "bg-line text-muted"
                   )}
                 >
@@ -287,7 +303,7 @@ export default function CheckoutPage() {
                     onClick={() => {
                       if (validateAddress()) setStep("payment");
                     }}
-                    className="mt-5 h-12 w-full rounded-full bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-deep sm:w-auto sm:px-10"
+                    className="mt-5 h-12 w-full rounded-xl bg-night text-sm font-semibold text-white transition-colors hover:bg-night-deep sm:w-auto sm:px-10"
                   >
                     Continue to payment
                   </button>
@@ -309,7 +325,7 @@ export default function CheckoutPage() {
                   </div>
                   <button
                     onClick={() => setStep("address")}
-                    className="shrink-0 text-[0.8rem] font-semibold text-accent hover:text-accent-deep"
+                    className="shrink-0 text-[0.8rem] font-medium text-muted underline underline-offset-4 transition-colors hover:text-ink"
                   >
                     Change
                   </button>
@@ -338,7 +354,7 @@ export default function CheckoutPage() {
                       className={cn(
                         "flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all",
                         selected
-                          ? "border-accent bg-accent-soft"
+                          ? "border-ink bg-surface"
                           : "border-line hover:border-ink/25"
                       )}
                     >
@@ -353,7 +369,7 @@ export default function CheckoutPage() {
                       <span
                         className={cn(
                           "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                          selected ? "bg-accent text-white" : "bg-surface text-muted"
+                          selected ? "bg-night text-white" : "bg-surface text-muted"
                         )}
                       >
                         <Icon size={16} />
@@ -369,7 +385,7 @@ export default function CheckoutPage() {
                       <span
                         className={cn(
                           "h-4 w-4 shrink-0 rounded-full border-2 transition-colors",
-                          selected ? "border-accent bg-accent" : "border-line"
+                          selected ? "border-ink bg-ink" : "border-line"
                         )}
                       />
                     </label>
@@ -434,7 +450,7 @@ export default function CheckoutPage() {
                 <button
                   onClick={placeOrder}
                   disabled={step !== "payment" || placing}
-                  className="flex h-13 w-full items-center justify-center gap-2 rounded-full bg-accent py-3.5 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-accent transition-all hover:bg-accent-deep disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-night py-4 text-sm font-semibold text-white transition-colors hover:bg-night-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
                 >
                   {placing ? (
                     <>

@@ -9,6 +9,7 @@ import { WishlistButton } from "@/components/commerce/WishlistButton";
 import { QuantityStepper } from "@/components/commerce/QuantityStepper";
 import { EnquireButton } from "@/components/common/EnquireButton";
 import { useCart } from "@/components/commerce/CartProvider";
+import { useProductColor } from "@/components/products/ColorProvider";
 import {
   deliveryEstimate,
   discountPercent,
@@ -21,6 +22,11 @@ const ASSURANCES = [
   { icon: Truck, label: "Free delivery", detail: "On orders above ₹15,000" },
   { icon: Wrench, label: "Free installation", detail: "By a trained team" },
   { icon: ShieldCheck, label: "1-year warranty", detail: "Frame & mechanism" },
+  /* ⚠ PLACEHOLDER. No returns window is written down anywhere in this
+     codebase, and this tile is the only place on the site that promises one.
+     Confirm the real policy with the client or remove the tile — an unbacked
+     returns promise on a buy button is the kind of thing that ends up in a
+     consumer complaint. */
   { icon: RotateCcw, label: "7-day returns", detail: "Unused, in packaging" },
 ];
 
@@ -35,11 +41,23 @@ const ASSURANCES = [
  * The enquiry route stays available beneath the cart buttons rather than being
  * removed. Retail and trade buyers land on the same page, and a floor manager
  * pricing forty seats should not have to fake a retail order to reach a human.
+ *
+ * COLOUR COMES FROM ColorProvider, NOT FROM LOCAL STATE.
+ *
+ * The PDP already has a colour picker that drives the gallery. If this box
+ * kept its own, the page would carry two swatch rows that disagree — and the
+ * one that decides what lands in the cart would be the one NOT changing the
+ * photograph, which is the worst possible split.
+ *
+ * Reading the shared context means the swatch above the gallery is the single
+ * control, and the line added to the cart is the colourway on screen.
  */
 export function BuyBox({ product }: { product: Product }) {
   const { addItem } = useCart();
-  const [color, setColor] = useState(product.colors[0]?.name ?? "Default");
+  const { active } = useProductColor();
   const [qty, setQty] = useState(1);
+
+  const color = active?.name ?? product.colors[0]?.name ?? "Default";
 
   const off = discountPercent(product.price, product.compareAtPrice);
   const notice = stockNotice(product);
@@ -78,33 +96,6 @@ export function BuyBox({ product }: { product: Product }) {
           </p>
         )}
       </div>
-
-      {/* ------------------------------------------------------- colour */}
-      {product.colors.length > 1 && (
-        <div>
-          <p className="mb-2 text-[0.82rem] font-semibold text-ink">
-            Colour: <span className="font-normal text-muted">{color}</span>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {product.colors.map((c) => (
-              <button
-                key={c.name}
-                onClick={() => setColor(c.name)}
-                aria-label={c.name}
-                aria-pressed={color === c.name}
-                title={c.name}
-                className={cn(
-                  "h-9 w-9 rounded-full border-2 transition-all",
-                  color === c.name
-                    ? "border-accent ring-2 ring-accent/25 ring-offset-1"
-                    : "border-line hover:border-ink/30"
-                )}
-                style={{ background: c.hex }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ----------------------------------------------------- quantity */}
       <div className="flex items-center gap-4">

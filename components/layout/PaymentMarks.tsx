@@ -44,7 +44,7 @@ function hasArtwork(mark: PaymentMark): mark is PaymentMark & { src: string } {
   }
 }
 
-function Tile({ children }: { children: ReactNode }) {
+function TextChip({ children }: { children: ReactNode }) {
   return (
     <span className="flex h-9 min-w-[3.25rem] items-center justify-center rounded-md border border-line bg-white px-2.5">
       {children}
@@ -66,26 +66,58 @@ export function PaymentMarks() {
       <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
         {PAYMENT_MARKS.map((mark) =>
           hasArtwork(mark) ? (
-            <Tile key={mark.label}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+            /* TWO RENDERINGS, driven by `boxed`.
+
+               CARD ART gets NO container. Those files are already a rounded
+               rectangle with a background colour baked in — putting one inside
+               a white bordered tile draws a card inside a card, and the tile's
+               padding shrinks the mark to about half the height it should be.
+               So the image IS the tile: `h-9` to match everything else in the
+               row, `w-auto` for its natural width.
+
+               BARE WORDMARKS get the chip. They are transparent and much wider
+               than they are tall — RuPay is nearly 4:1 against the cards' 1.6:1
+               — so at `h-9` one would be over 130px wide and floating unbacked
+               on the footer grey. Inside a chip at `max-h-4` it reads as the
+               same kind of object as the cards beside it.
+
+               Getting `boxed` wrong shows up immediately in either direction.
+               See the note on the flag in constants/payments.ts. */
+            mark.boxed ? (
+              <TextChip key={mark.label}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={mark.src}
+                  alt={mark.label}
+                  width={mark.width}
+                  height={mark.height}
+                  loading="lazy"
+                  decoding="async"
+                  className="max-h-4 w-auto object-contain"
+                />
+              </TextChip>
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
+                key={mark.label}
                 src={mark.src}
                 alt={mark.label}
                 width={mark.width}
                 height={mark.height}
                 loading="lazy"
                 decoding="async"
-                className="h-auto max-h-5 w-auto object-contain"
+                className="h-9 w-auto rounded-md object-contain"
               />
-            </Tile>
+            )
           ) : (
-            /* Fallback chip. Same tile, label instead of artwork — the strip
-               stays a single readable row whatever mix of the two it holds. */
-            <Tile key={mark.label}>
+            /* No artwork on disk. Keeps the white chip, because a bare label
+               floating on the footer ground would not read as an item in the
+               same list. */
+            <TextChip key={mark.label}>
               <span className="text-[0.72rem] font-medium text-muted">
                 {mark.label}
               </span>
-            </Tile>
+            </TextChip>
           )
         )}
       </div>

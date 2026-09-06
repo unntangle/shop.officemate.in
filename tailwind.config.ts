@@ -19,10 +19,43 @@ const config: Config = {
         surface: "#F5F5F5",
         ink: "#2D2D2D",
         muted: "#666666",
+        /* Brand red.
+
+           #EC1C24 — THE ACTUAL OFFICEMATE RED, taken from the live site at
+           officemate.in, where the logo is an inline SVG carrying
+           `.cls-1 { fill: #ec1c24; }`.
+
+           Everything before this was a guess. The palette went #C62828 ->
+           #D32F2F -> #E53935 chasing "lighter", all of them Material Design
+           shades picked by eye. This one is not a preference, it is the
+           company's colour, so it should not be changed without a reason from
+           the brand side.
+
+           ⚠ IT SITS JUST BELOW WCAG AA, at about 4.4:1 on white against the
+           4.5:1 threshold. That is a property of the brand red itself, not of
+           a choice made here.
+
+           One value has to work in both directions — red text and icons on
+           white, and a red fill under white button text — and both land at
+           that same ratio. It still clears AA for LARGE text (3:1) and for
+           non-text UI like fills, borders and icons. What it misses is normal
+           body-size text: the "View all" links, section eyebrows, and white
+           labels on primary buttons.
+
+           THE FIX IS NOT TO DARKEN THIS. Doing so puts the site off-brand. If
+           the contrast gap needs closing, split the token: keep #EC1C24 for
+           fills, logos and large type, and add a darkened variant for small
+           text and links. Two tokens to remember, brand intact, text passing.
+
+           `soft` is a BACKGROUND tint only — at 97% luminance it cannot carry
+           foreground weight. Red text in `soft` on white is 1.1:1, invisible
+           rather than subtle.
+
+           `deep` is the hover step. */
         accent: {
-          DEFAULT: "#C62828",
+          DEFAULT: "#EC1C24",
           soft: "#FDECEA",
-          deep: "#8E1B1B",
+          deep: "#C1141B",
         },
 
         /* ------------------------------------------------------------------

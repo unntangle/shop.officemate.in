@@ -309,8 +309,30 @@ export const AWARDS = [
 ];
 
 /**
- * Long-form SEO block at the foot of the page.
+ * Long-form SEO block at the foot of the page, rendered by SeoContent.tsx.
  * Kept as data so the copy team can edit it without touching the component.
+ *
+ * TWO HALVES, deliberately.
+ *
+ * The first four blocks are statement headings — the category-level copy that
+ * ranks for "ergonomic office chair", "modular workstation" and so on.
+ *
+ * The rest are QUESTION headings. Those exist because the queries people
+ * actually type are questions ("which office chair is best for long hours",
+ * "mesh or leather office chair"), and a heading that matches the query word
+ * for word is what gets pulled into a featured snippet. They are NOT in
+ * HOME_FAQS: an accordion of a dozen rows stops being scannable and nobody
+ * opens any of them. Here length is the point — this block is set small and
+ * low-contrast precisely because it is for finding, not for reading.
+ *
+ * Answers stay in the 40-70 word range. Shorter has nothing to extract;
+ * longer and search engines truncate mid-thought.
+ *
+ * ⚠ NO PRICES. It is tempting to answer "how much should you spend" with a
+ * number, but the only figure in this codebase (₹8,900, in HERO_SLIDES) is
+ * marked placeholder, and a stale price in a search snippet is worse than
+ * none. The answer explains what each tier buys instead. Add a real figure
+ * once pricing is signed off.
  */
 export const SEO_SECTIONS = [
   {
@@ -328,6 +350,42 @@ export const SEO_SECTIONS = [
   {
     heading: "Delivery, installation and warranty",
     body: "In-stock models ship in three to five working days. Every order includes free installation by a trained team, and frames and mechanisms carry a one-year warranty. Bulk orders are scheduled around your shift patterns, with staggered delivery so no floor loses a working day.",
+  },
+  {
+    heading: "Which office chair is best for long working hours?",
+    body: "For eight hours or more at a desk, look for three adjustments before anything else: lumbar support that meets the curve of your lower back, seat-depth glide so the front edge does not press behind your knees, and a recline you can lock. The Executive and Leather series carry all three. The Chair Health Score on every product page rates them, so you can compare models directly rather than by feature count.",
+  },
+  {
+    heading: "Mesh or leather \u2014 which office chair back is better?",
+    body: "Mesh flexes to your spine and breathes, which matters in Indian summers and in rooms without strong air conditioning. Leather and leatherette hold their shape, feel more formal and wipe clean, so they suit cabins and boardrooms. Neither is more ergonomic on its own \u2014 the adjustments underneath decide that.",
+  },
+  {
+    heading: "How much should you spend on an office chair?",
+    body: "Cost tracks adjustability more than materials. An entry task chair sets your height and little else; mid-range models add lumbar support and armrest travel; premium seating adds seat depth, tilt tension and a headrest. Decide how many hours a day the chair will be used, then buy the adjustments those hours need. Filter the seating range by budget to see what each tier includes.",
+  },
+  {
+    heading: "What is the correct desk and chair height?",
+    body: "Set the chair first: feet flat, knees at roughly ninety degrees, hips level with or slightly above them. Then set the desk so your forearms are parallel to the floor with your shoulders relaxed. If the desk is fixed and too high, raise the chair and add a footrest rather than reaching upward all day. A sit-stand desk removes the compromise entirely.",
+  },
+  {
+    heading: "Are sit-stand desks worth it?",
+    body: "The benefit is not standing, it is changing position. Alternating every thirty to sixty minutes eases the lower-back load that comes from sitting still, and most people find that easier to sustain than a resolution to get up more often. Height-adjustable models store presets, so switching takes one press rather than a decision.",
+  },
+  {
+    heading: "How do you plan seating for a new office floor?",
+    body: "Start from how the floor is used rather than from a headcount. Focused desk work needs task seating and workstations; meeting rooms need chairs that stack or roll; reception and breakout areas need soft seating that survives constant use. Our workspace team assesses the floor before quoting, so the mix is set against your layout instead of a spreadsheet.",
+  },
+  {
+    heading: "How do you get a bulk quote for an office fit-out?",
+    body: "For ten seats and up, tell us the headcount, the city and roughly when the floor needs to be live. You get volume pricing, a floor assessment before you commit, GST invoicing, and delivery staggered around your shift patterns. Annual maintenance contracts are available so servicing is scheduled rather than reactive.",
+  },
+  {
+    heading: "Where can you see Officemate furniture in person?",
+    body: "There are experience centres in Chennai (T. Nagar), Coimbatore, Bengaluru (Indira Nagar) and Hyderabad (Gachibowli), where you can sit in the full seating range rather than judging it from a photograph. If you cannot get to one, a specialist will walk you through the chairs over a video call.",
+  },
+  {
+    heading: "How do you look after an office chair?",
+    body: "Most chairs fail at the castors and the gas lift, not the frame. Vacuum mesh and fabric monthly, wipe leatherette with a damp cloth rather than solvent, and swap castors once they start dragging on the floor instead of rolling. Replacement parts stay available for years after the original order.",
   },
 ];
 

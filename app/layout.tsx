@@ -8,6 +8,7 @@ import { Footer } from "@/components/layout/Footer";
 import { EnquiryProvider } from "@/components/common/EnquiryProvider";
 import { BackToTop } from "@/components/common/BackToTop";
 import { FloatingDock } from "@/components/common/FloatingDock";
+import { AuthProvider } from "@/components/common/AuthProvider";
 import { CartProvider } from "@/components/commerce/CartProvider";
 import { CartDrawer } from "@/components/commerce/CartDrawer";
 
@@ -126,16 +127,23 @@ export default function RootLayout({
         {/* CartProvider wraps EnquiryProvider rather than the reverse: the
             enquiry modal can be opened from inside a cart surface (bulk order
             prompts on the cart page), but nothing in the cart is reachable from
-            the enquiry modal, so the cart is the outer of the two. */}
+            the enquiry modal, so the cart is the outer of the two.
+
+            AuthProvider sits inside CartProvider because the wishlist heart
+            needs both — it reads cart state and opens the sign-in modal. It
+            wraps everything below it because that modal has to be reachable
+            from the header AND from a product card deep in a grid. */}
         <CartProvider>
-          <EnquiryProvider>
-            <Navbar />
-            <main id="main">{children}</main>
-            <Footer />
-            <BackToTop />
-            <FloatingDock />
-            <CartDrawer />
-          </EnquiryProvider>
+          <AuthProvider>
+            <EnquiryProvider>
+              <Navbar />
+              <main id="main">{children}</main>
+              <Footer />
+              <BackToTop />
+              <FloatingDock />
+              <CartDrawer />
+            </EnquiryProvider>
+          </AuthProvider>
         </CartProvider>
       </body>
     </html>

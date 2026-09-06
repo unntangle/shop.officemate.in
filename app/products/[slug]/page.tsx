@@ -3,13 +3,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ShieldCheck,
-  RotateCcw,
-  Truck,
   Check,
   FileText,
   Play,
   ArrowRight,
-  ArrowUpRight,
   Ruler,
   Layers,
   Wind,
@@ -21,15 +18,14 @@ import { SITE } from "@/constants/site";
 import { Reveal } from "@/components/common/Reveal";
 import { Accordion } from "@/components/common/Accordion";
 import { SectionHeading } from "@/components/common/SectionHeading";
-import { EnquireButton } from "@/components/common/EnquireButton";
-import { Button } from "@/components/ui/button";
 import { ModelCard } from "@/components/products/ModelCard";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductHighlights } from "@/components/products/ProductHighlights";
 import { ColorProvider } from "@/components/products/ColorProvider";
 import { ColorPicker } from "@/components/products/ColorPicker";
 import { Configurator } from "@/components/products/Configurator";
-import { StickyEnquiry } from "@/components/products/StickyEnquiry";
+import { BuyBox } from "@/components/products/BuyBox";
+import { StickyBuy } from "@/components/products/StickyBuy";
 
 export function generateStaticParams() {
   return PRODUCTS.map((p) => ({ slug: p.slug }));
@@ -57,12 +53,9 @@ export async function generateMetadata({
   };
 }
 
-/* Pastel tiles, cycled positionally — same device as the Stats band */
-const TRUST = [
-  { icon: ShieldCheck, label: "1-yr warranty", tile: "bg-sage-soft text-sage-ink" },
-  { icon: RotateCcw, label: "30-day trial", tile: "bg-honey-soft text-honey-ink" },
-  { icon: Truck, label: "Free delivery", tile: "bg-lilac-soft text-lilac-ink" },
-];
+/* The TRUST row that used to sit under the CTA moved into BuyBox, which
+   renders the same assurances as part of the buy column. One list, one place
+   — two copies would have promised different things within a month. */
 
 export default async function ProductDetailPage({
   params,
@@ -140,8 +133,18 @@ export default async function ProductDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Overview — ColorProvider shares the selected colourway between the
-          gallery and the picker. Children stay server-rendered. */}
+      {/* ColorProvider wraps THE WHOLE PAGE, not just the overview section.
+
+          It used to close right after the gallery, which was fine while the
+          only consumers were ColorPicker and ProductGallery sitting side by
+          side. StickyBuy also needs the selected colourway — it renders at the
+          very bottom, and reading the context from outside the provider threw
+          on every product page.
+
+          Widening the provider rather than making the hook optional is the
+          right fix: a fallback would have let the sticky bar add a DIFFERENT
+          colour to the cart than the one on screen, silently. `children` pass
+          through untouched, so every section below stays server-rendered. */}
       <ColorProvider colors={product.colors}>
         <section className="container grid gap-8 lg:grid-cols-[auto_minmax(0,36rem)] lg:gap-12">
           <ProductGallery
@@ -168,48 +171,25 @@ export default async function ProductDetailPage({
             {/* Configuration */}
             <Configurator />
 
-            {/* CTA */}
-            <div className="mt-6">
-              <Button asChild variant="accent" size="lg" className="group w-full">
-                <Link href="/contact">
-                  Visit Experience Centre
-                  <ArrowUpRight
-                    size={16}
-                    className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                  />
-                </Link>
-              </Button>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <EnquireButton
-                  product={`${product.name} — book a demo`}
-                  variant="outline"
-                  size="lg"
-                  label="Live demo"
-                />
-                <EnquireButton
-                  product={product.name}
-                  variant="outline"
-                  size="lg"
-                  label="Enquire now"
-                />
-              </div>
-            </div>
+            {/* BUY BOX — price, quantity, add to cart, buy now.
 
-            {/* Trust row */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              {TRUST.map(({ icon: Icon, label, tile }) => (
-                <div
-                  key={label}
-                  className="flex flex-col items-center gap-2 rounded-2xl bg-surface px-3 py-4 text-center"
-                >
-                  <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-full ${tile}`}
-                  >
-                    <Icon size={16} />
-                  </span>
-                  <span className="text-xs font-medium text-muted">{label}</span>
-                </div>
-              ))}
+                This replaced "Visit Experience Centre" plus two Enquire
+                buttons. The page was the last piece of the enquiry-era site
+                still in place: every product had a cart button on the listing
+                grid and none on its own detail page, which is the one screen
+                where someone actually decides to buy.
+
+                Nothing was lost by the swap. BuyBox carries the same trust
+                tiles the TRUST row above used to render, and it keeps an
+                Enquire route of its own for bulk buyers — a floor manager
+                pricing forty seats should not have to fake a retail order to
+                reach a human.
+
+                It reads the colourway from ColorProvider, so the swatch beside
+                the gallery is the single control and the line added to the
+                cart is the colour on screen. */}
+            <div className="mt-6">
+              <BuyBox product={product} />
             </div>
 
             {/* Detail panels — the long-form copy, folded away until asked for */}
@@ -223,7 +203,6 @@ export default async function ProductDetailPage({
             </div>
           </div>
         </section>
-      </ColorProvider>
 
       {/* Description */}
       <section id="overview" className="section scroll-mt-24">
@@ -458,11 +437,8 @@ export default async function ProductDetailPage({
         </section>
       )}
 
-      <StickyEnquiry
-        name={product.name}
-        price={product.price}
-        compareAtPrice={product.compareAtPrice}
-      />
+      <StickyBuy product={product} />
+      </ColorProvider>
     </div>
   );
 }

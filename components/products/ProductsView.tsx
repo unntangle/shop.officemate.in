@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { SlidersHorizontal, Star, X } from "lucide-react";
+import { LayoutGrid, SlidersHorizontal, Star, X } from "lucide-react";
 import type { CategorySlug } from "@/types";
 import { CATEGORIES } from "@/constants/categories";
+import { CATEGORY_IMAGES } from "@/constants/home";
 import { CATALOG, priceBounds, seriesIn } from "@/lib/catalog";
 import { formatINR } from "@/lib/commerce";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,65 @@ const SORTS = [
 ] as const;
 
 const [MIN_PRICE, MAX_PRICE] = priceBounds();
+
+/**
+ * Category thumbnail for the filter rail.
+ *
+ * Ported from the showcase build at officemate.in, where the category list
+ * carried a photo per row rather than a line of text. It is worth keeping:
+ * this catalogue's category names are internal vocabulary — "Tele Pods" and
+ * "Leisure Lounges" mean very little cold — and the picture explains both
+ * instantly.
+ *
+ * TWO CHANGES FROM THE ORIGINAL.
+ *
+ * It reads `CATEGORY_IMAGES` rather than the old file's own inline Unsplash
+ * map. That map was a second copy of the same eight photographs, so the rail
+ * and the homepage strip could drift apart; there is one source now.
+ *
+ * The greyscale-until-hover treatment is kept, and it is doing real work here
+ * rather than being decoration: eight small colour photographs stacked in a
+ * narrow rail compete with the product grid beside them. Desaturating the
+ * inactive ones lets the active category and the products stay the only
+ * colour on the page.
+ */
+function CategoryThumb({
+  slug,
+  active,
+}: {
+  slug: CategorySlug | "all";
+  active: boolean;
+}) {
+  /* "All products" has no photograph of its own, and inventing one would mean
+     picking a category to represent every category. A tinted initial-style
+     tile says "this is the reset" instead. */
+  const src = slug === "all" ? null : CATEGORY_IMAGES[slug];
+
+  return (
+    <span
+      className={cn(
+        "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full transition-colors",
+        active ? "bg-accent-soft text-accent" : "bg-surface text-muted"
+      )}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className={cn(
+            "h-full w-full object-cover transition-all duration-300",
+            active ? "" : "grayscale group-hover:grayscale-0"
+          )}
+        />
+      ) : (
+        <LayoutGrid size={15} />
+      )}
+    </span>
+  );
+}
 
 export function ProductsView() {
   const router = useRouter();
@@ -137,13 +197,17 @@ export function ProductsView() {
                 key={c.slug}
                 onClick={() => patch({ category: c.slug === "all" ? null : c.slug, sub: null })}
                 className={cn(
-                  "rounded-lg px-3 py-2 text-left text-[0.82rem] transition-colors",
+                  "group flex items-center gap-2.5 rounded-full py-1 pl-1 pr-3 text-left text-[0.82rem] transition-colors",
                   activeCategory === c.slug
                     ? "bg-accent-soft font-semibold text-accent"
                     : "text-muted hover:bg-surface hover:text-ink"
                 )}
               >
-                {c.name}
+                <CategoryThumb
+                  slug={c.slug}
+                  active={activeCategory === c.slug}
+                />
+                <span className="truncate">{c.name}</span>
               </button>
             )
           )}

@@ -6,6 +6,19 @@ export const SITE = {
   url: "https://officemate.in",
   email: "hello@officemate.in",
   phone: "+91 97898 27270",
+  /**
+   * Corporate Identity Number, issued by the Ministry of Corporate Affairs.
+   *
+   * Indian companies must display this on their website, letterheads,
+   * invoices and other official publications — Section 12(3)(c) of the
+   * Companies Act 2013. That is why it sits in the footer legal bar on every
+   * page rather than only on an About page.
+   *
+   * Reading it back: U = unlisted, 36100 = manufacture of furniture, TN =
+   * Tamil Nadu, 2007 = year of incorporation, PTC = private limited company.
+   * All of which matches Zebro Officemate Pvt Ltd as registered.
+   */
+  cin: "U36100TN2007PTC065143",
   /** Registered / corporate address — see LOCATIONS for the full list. */
   address: {
     line1: "Zebro Officemate Pvt Ltd, No 67/3, E Spur Tank Road",
@@ -173,31 +186,52 @@ export const TESTIMONIALS = [
   },
 ];
 
+/**
+ * Homepage FAQ, rendered by components/home/HomeFaqs.tsx.
+ *
+ * Kept SHORT on purpose — five questions, the ones almost every shopper asks
+ * before deciding. An accordion of a dozen rows stops being scannable and
+ * starts being a document, and at that point nobody opens any of them. The
+ * longer question-and-answer material lives in SEO_SECTIONS at the foot of
+ * the page instead, where length is the point.
+ *
+ * Every number here is also stated in the footer assurance strip and the SEO
+ * block. That is why they live in constants rather than in components: a FAQ
+ * that contradicts the footer is worse than no FAQ, because it is the surface
+ * people trust most.
+ *
+ * ⚠ TWO ANSWERS WERE FACTUALLY WRONG and are fixed below. The old "try a
+ * chair" answer named studios in Bengaluru, Pune, Hyderabad and Mumbai;
+ * STORES in constants/home.ts lists Chennai, Coimbatore, Bengaluru and
+ * Hyderabad. Pune and Mumbai do not exist and Chennai — the flagship — was
+ * missing. The old enquiry answer described an enquiry-only flow that the
+ * storefront replaced.
+ */
 export const HOME_FAQS = [
   {
-    question: "Can I try a chair before enquiring?",
+    question: "How long does delivery take?",
     answer:
-      "Yes. You can book a live video demo from any product page, or visit one of our studios in Bengaluru, Pune, Hyderabad or Mumbai to sit in the full range.",
+      "In-stock models ship in three to five working days. Made-to-order finishes and bulk workspace orders are scheduled with you directly, so you get a confirmed date rather than an estimate.",
   },
   {
-    question: "How does an enquiry work?",
+    question: "Do I have to assemble the chair myself?",
     answer:
-      "Tap Enquire Now on any product, tell us a little about your needs, and a specialist reaches out within one business day with pricing, lead time and a personalised recommendation.",
-  },
-  {
-    question: "Do you supply offices in bulk?",
-    answer:
-      "We do. For orders above ten units we offer workspace assessments, volume pricing and staggered delivery. Mention your headcount in the enquiry form and we'll take it from there.",
+      "No. Every order includes free installation by a trained team, so the chair is unboxed, assembled and adjusted for you. Bulk orders are installed floor by floor around your shift patterns.",
   },
   {
     question: "What does the warranty cover?",
     answer:
-      "Frames and mechanisms are covered for one year. Wearing parts like castors and upholstery carry their own terms, listed on each product page.",
+      "Frames and mechanisms are covered for one year. Wearing parts such as castors and upholstery carry their own terms, listed on each product page.",
   },
   {
-    question: "How long is delivery?",
+    question: "Can I try a chair before I buy?",
     answer:
-      "In-stock models ship within 3–5 business days. Made-to-order finishes and bulk workspace orders are scheduled with you directly during the enquiry.",
+      "Yes. Visit an experience centre in Chennai (T. Nagar), Coimbatore, Bengaluru or Hyderabad to sit in the full range. If you cannot get to one, tap Shop Live and a specialist will walk you through the chairs over a video call.",
+  },
+  {
+    question: "Do you supply offices in bulk?",
+    answer:
+      "We do. For ten seats and up we quote volume pricing, assess the floor before you commit, and stagger delivery so no team loses a working day. GST invoicing and AMC contracts are standard.",
   },
 ];
 

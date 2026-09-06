@@ -23,6 +23,11 @@ import {
  * breakpoint. The drawer is for confirming an add and getting back to
  * shopping; this page is for reviewing an order before committing money, so it
  * shows unit prices, per-line savings and a delivery estimate the drawer omits.
+ *
+ * COLOUR: CHARCOAL ACTIONS, RED RESERVED FOR ERRORS — the same rule as the
+ * drawer and the checkout page. The buttons are `night`, links and row actions
+ * are grey darkening to ink, and green stays for money saved. Nothing on this
+ * page is red, because nothing on it is a problem.
  */
 export default function CartPage() {
   const { lines, totals, ready, setQty, removeItem, toggleWishlist } = useCart();
@@ -61,13 +66,13 @@ export default function CartPage() {
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link
               href="/products"
-              className="inline-flex h-12 items-center rounded-full bg-accent px-7 text-sm font-semibold text-white transition-colors hover:bg-accent-deep"
+              className="inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
             >
               Shop all products
             </Link>
             <Link
               href="/advisor"
-              className="inline-flex h-12 items-center rounded-full border border-ink/15 px-7 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-surface"
+              className="inline-flex h-12 items-center rounded-xl border border-ink/15 px-7 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-surface"
             >
               Find your chair
             </Link>
@@ -102,7 +107,7 @@ export default function CartPage() {
 
         {gap > 0 && (
           <p className="mt-3 flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-3 text-[0.82rem] text-ink">
-            <Truck size={16} className="shrink-0 text-accent" />
+            <Truck size={16} className="shrink-0 text-muted" />
             Add <strong>{formatINR(gap)}</strong> more to qualify for free delivery.
           </p>
         )}
@@ -153,7 +158,7 @@ export default function CartPage() {
                             </p>
                             <Link
                               href={`/products/${line.slug}`}
-                              className="clamp-2 mt-0.5 text-[0.95rem] font-bold leading-snug text-ink hover:text-accent"
+                              className="clamp-2 mt-0.5 text-[0.95rem] font-bold leading-snug text-ink hover:text-muted"
                             >
                               {line.name}
                             </Link>
@@ -204,7 +209,7 @@ export default function CartPage() {
                               toggleWishlist(line.slug);
                               removeItem(line.lineId);
                             }}
-                            className="flex items-center gap-1.5 text-[0.78rem] font-medium text-muted transition-colors hover:text-accent"
+                            className="flex items-center gap-1.5 text-[0.78rem] font-medium text-muted transition-colors hover:text-ink"
                           >
                             <Heart size={14} />
                             Save for later
@@ -212,7 +217,7 @@ export default function CartPage() {
 
                           <button
                             onClick={() => removeItem(line.lineId)}
-                            className="flex items-center gap-1.5 text-[0.78rem] font-medium text-muted transition-colors hover:text-accent"
+                            className="flex items-center gap-1.5 text-[0.78rem] font-medium text-muted transition-colors hover:text-ink"
                           >
                             <Trash2 size={14} />
                             Remove
@@ -237,7 +242,7 @@ export default function CartPage() {
               action={
                 <Link
                   href="/checkout"
-                  className="flex h-13 w-full items-center justify-center rounded-full bg-accent py-3.5 text-sm font-semibold uppercase tracking-[0.04em] text-white shadow-accent transition-colors hover:bg-accent-deep"
+                  className="flex w-full items-center justify-center rounded-xl bg-night py-4 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
                 >
                   Proceed to checkout
                 </Link>
@@ -254,7 +259,7 @@ export default function CartPage() {
               </p>
               <Link
                 href="/contact?intent=bulk"
-                className="mt-3 inline-flex text-[0.78rem] font-semibold text-accent hover:text-accent-deep"
+                className="mt-3 inline-flex text-[0.78rem] font-semibold text-ink underline underline-offset-4 transition-colors hover:text-muted"
               >
                 Request a bulk quote →
               </Link>
