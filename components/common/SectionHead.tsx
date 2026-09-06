@@ -49,7 +49,13 @@ export function SectionHead({
   const link = href ? (
     <Link
       href={href}
-      className="group inline-flex items-center gap-1 text-[0.85rem] font-semibold text-accent transition-colors hover:text-accent-deep"
+      /* Azure, not accent red. These "View all" links are navigation — a way
+         deeper into a section — not calls to action, and red is reserved here
+         for errors and for genuine CTAs. `azure` is the palette's utility
+         blue, which already carries the viewer controls and the contact dock
+         for exactly that reason. `azure-ink` is its darker step, the hover
+         equivalent of `accent-deep`. */
+      className="group inline-flex items-center gap-1 text-[0.85rem] font-semibold text-azure transition-colors hover:text-azure-ink"
     >
       {linkLabel}
       <ArrowRight

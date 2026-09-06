@@ -98,7 +98,7 @@ function Column({
           <li key={l.label}>
             <Link
               href={l.href}
-              className="text-[0.8rem] text-muted transition-colors hover:text-accent"
+              className="text-[0.8rem] text-muted transition-colors hover:text-azure"
             >
               {l.label}
             </Link>
@@ -138,16 +138,16 @@ export function Footer() {
             <div className="mt-5 space-y-2.5">
               <a
                 href={`tel:${SITE.phone.replace(/\s/g, "")}`}
-                className="flex items-center gap-2.5 text-[0.82rem] text-ink transition-colors hover:text-accent"
+                className="flex items-center gap-2.5 text-[0.82rem] text-ink transition-colors hover:text-azure"
               >
-                <Phone size={15} className="shrink-0 text-accent" />
+                <Phone size={15} className="shrink-0 text-azure" />
                 {SITE.phone}
               </a>
               <a
                 href={`mailto:${SITE.email}`}
-                className="flex items-center gap-2.5 text-[0.82rem] text-ink transition-colors hover:text-accent"
+                className="flex items-center gap-2.5 text-[0.82rem] text-ink transition-colors hover:text-azure"
               >
-                <Mail size={15} className="shrink-0 text-accent" />
+                <Mail size={15} className="shrink-0 text-azure" />
                 {SITE.email}
               </a>
             </div>
@@ -161,7 +161,7 @@ export function Footer() {
                     key={s.label}
                     href={s.href}
                     aria-label={s.label}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-muted transition-all hover:border-accent hover:bg-accent hover:text-white"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-muted transition-all hover:border-azure hover:bg-azure hover:text-white"
                   >
                     <Icon size={15} />
                   </a>
@@ -179,7 +179,7 @@ export function Footer() {
                 <li key={c.slug}>
                   <Link
                     href={`/categories?category=${c.slug}`}
-                    className="text-[0.8rem] text-muted transition-colors hover:text-accent"
+                    className="text-[0.8rem] text-muted transition-colors hover:text-azure"
                   >
                     {c.name}
                   </Link>

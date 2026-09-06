@@ -254,7 +254,7 @@ export function BulkOrderBand() {
                 label="Shop Live"
               />
               <ActionPill
-                href="/contact#stores"
+                href="/stores"
                 /* Solid charcoal, not the outlined glass this started as.
 
                    Glass made it the odd one out: two solid pills and a

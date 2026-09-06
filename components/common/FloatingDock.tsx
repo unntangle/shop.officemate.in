@@ -147,7 +147,7 @@ const ACTIONS = [
   {
     id: "stores",
     label: "Visit store",
-    href: "/contact#stores",
+    href: "/stores",
     external: false,
     icon: <Store size={19} />,
     toneClass: "text-sage",
@@ -428,6 +428,35 @@ export function FloatingDock() {
         );
       })}
 
+      {/* Attention pulse.
+
+          A SIBLING BEHIND THE BUTTON, not a child of it. The trigger has an
+          opaque fill, so a child would be painted underneath that fill and
+          only the sliver past its edge would ever show. As a sibling declared
+          first, the button paints over its centre and what you see is the
+          ring escaping from behind.
+
+          `pointer-events-none` matters more than it looks: this grows to
+          twice the button's size, so without it the invisible halo would
+          swallow clicks aimed at anything beside the dock — including the
+          BackToTop button directly below.
+
+          HIDDEN WHILE THE FAN IS OPEN. Once the actions are out the pulse has
+          done its job, and a ring throbbing under four discs is just movement
+          competing with the thing it was advertising.
+
+          Reduced motion needs no handling here. The `prefers-reduced-motion`
+          block at the foot of globals.css collapses every animation on the
+          site to 0.001ms, so this does not run for anyone who has asked for
+          stillness — and because the ring is invisible at rest, nothing is
+          left stranded on screen when it doesn't. */}
+      {!open && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 animate-dock-pulse rounded-full bg-azure/40"
+        />
+      )}
+
       {/* Trigger. A button, not a div — it needs to be focusable, activate on
           Enter and Space, and announce its state, and `aria-expanded` on a
           real button gets all three for free.
@@ -435,28 +464,61 @@ export function FloatingDock() {
           56px against the actions' 48px, so the thing you press is visibly
           the parent of the things that come out of it.
 
-          Accent red, not night. This is the only part of the dock on screen
-          at all times, and in near-black it read as generic chat furniture
-          rather than as Officemate's. The actions stay night so the open fan
-          is one dark cluster with a single coloured anchor — the red says
-          "this is the control", the dark says "these are its contents".
+          AZURE, NOT ACCENT RED. This is the only part of the dock on screen
+          at all times, sitting over every page in the site, and in brand red
+          it competed with whatever it happened to be floating above — a
+          product grid, a checkout summary — for the eye. It also broke the
+          site's rule that red means an error or a genuine call to action, not
+          "a control exists here".
 
-          Inverted against the rest of the dock: a pale `accent-soft` fill
-          with the red on the glyph, rather than red fill with a pale glyph.
-          Same two colours, swapped — which keeps the trigger unmistakably
-          Officemate's while making it the lightest thing in the stack instead
-          of the heaviest. Red on #FDECEA is about 5.9:1, so the glyph is
-          doing the legibility work the fill used to.
+          `azure` is the palette's existing utility blue, already carrying the
+          3D and AR viewer controls. The meaning it holds there is exactly
+          right here too: a tool the visitor reaches for, deliberately outside
+          the brand red so it never reads as "buy". Reusing it means the dock
+          introduces no new colour to the system — which a one-off hex would.
 
-          THE RING IS NOT DECORATION. #FDECEA is a 97%-luminance tint, so on
-          the white and #F5F5F5 grounds this dock floats over, the button's
-          own edge is nearly invisible — `shadow-lift` is far too diffuse to
-          define it alone. The hairline of accent at 20% is what keeps it
-          reading as a button rather than a smudge. Remove it and the control
-          disappears on white sections.
+          Inverted against the rest of the dock: a pale `azure-soft` fill with
+          the blue on the glyph, rather than a solid blue disc. That makes the
+          trigger the LIGHTEST thing in the stack rather than the heaviest, so
+          the open fan of charcoal action discs reads as its contents rather
+          than as more of the same object. Azure on #E8F0FE clears the 3:1 a
+          non-text glyph needs comfortably.
 
-          Hover flips the two colours back the other way, so pressing toward
-          it darkens rather than lightens — the direction people expect. */}
+          THE OUTLINE IS NOT DECORATION. `shadow-lift` is far too diffuse to
+          define an edge on its own, and a 95%-luminance fill has almost none
+          of its own against a white page; the azure hairline is what keeps
+          the silhouette crisp on white and grey grounds alike.
+
+          A REAL CSS `outline`, NOT A TAILWIND `ring`, and the distinction is
+          the whole reason this looks right.
+
+          `ring-offset-*` does not cut a gap. It stacks two box-shadows: the
+          ring is drawn at (width + offset) spread, and the offset shadow is
+          painted OPAQUELY over the inner part to carve the gap out of it.
+          That works only when the offset colour matches whatever is behind —
+          Tailwind defaults it to solid white, which paints a white halo the
+          moment this dock floats over the grey footer or a night band. Set it
+          to `transparent` instead and nothing gets carved at all: the full
+          5px of ink shows through as one thick band, which is exactly how it
+          looked.
+
+          `outline` + `outline-offset` has no such problem. The offset space
+          is simply not painted, so the gap shows the real page underneath on
+          every ground, and `outline-1` stays a true hairline. Outlines follow
+          `border-radius` in every current browser, so it tracks the circle.
+
+          One consequence worth knowing: globals.css sets a red
+          `outline: 2px` on `button:focus-visible`, which will replace this
+          while the button is keyboard-focused. That is correct behaviour —
+          the focus ring should win — but it means this outline and the focus
+          indicator are the same property and cannot both show.
+
+          HOVER CHANGES NO COLOUR — only scale. The fill, glyph and ring stay
+          exactly as they are and the button simply grows a little under the
+          pointer. That is deliberate: a persistent control sitting over every
+          page should acknowledge the pointer without repainting itself.
+          `active:scale-95` still confirms the press on touch, where there is
+          no hover at all. */}
       <button
         type="button"
         onClick={() => {
@@ -465,7 +527,7 @@ export function FloatingDock() {
         }}
         aria-expanded={open}
         aria-label={open ? "Close contact options" : "Contact options"}
-        className="relative grid h-14 w-14 place-items-center rounded-full bg-accent-soft text-accent ring-1 ring-accent/20 shadow-lift transition-all duration-300 hover:bg-accent hover:text-accent-soft hover:scale-105 active:scale-95"
+        className="relative grid h-14 w-14 place-items-center rounded-full bg-azure-soft text-azure outline outline-1 outline-offset-4 outline-azure shadow-lift transition-transform duration-300 hover:scale-105 active:scale-95"
       >
         {/* Both icons are always rendered and cross-faded on a shared centre.
             Swapping which one is mounted would snap; rotating one into the

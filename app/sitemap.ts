@@ -8,7 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   /* The catalogue listing lives at /categories now. The per-product routes
      below are unaffected — /products/<slug> is still where a product page
      lives, and only the browse-by-category page moved. */
-  const staticRoutes = ["", "/categories", "/about", "/contact"].map((path) => ({
+  const staticRoutes = ["", "/categories", "/stores", "/about", "/contact"].map((path) => ({
     url: `${SITE.url}${path}`,
     lastModified: now,
     changeFrequency: "monthly" as const,

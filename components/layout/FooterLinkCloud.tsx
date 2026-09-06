@@ -49,12 +49,12 @@ function LinkRun({ links }: { links: FooterLink[] }) {
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="transition-colors hover:text-accent"
+              className="transition-colors hover:text-azure"
             >
               {link.label}
             </a>
           ) : (
-            <Link href={link.href} className="transition-colors hover:text-accent">
+            <Link href={link.href} className="transition-colors hover:text-azure">
               {link.label}
             </Link>
           )}

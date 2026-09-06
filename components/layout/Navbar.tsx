@@ -459,7 +459,7 @@ export function Navbar() {
               <div className="mt-7 flex justify-end">
                 <Link
                   href="/categories"
-                  className="text-[0.85rem] font-medium text-accent transition-colors hover:text-accent-deep"
+                  className="text-[0.85rem] font-medium text-azure transition-colors hover:text-azure-ink"
                 >
                   View all
                 </Link>
@@ -569,7 +569,7 @@ export function Navbar() {
               <div className="mt-7 flex justify-end">
                 <Link
                   href={`/categories?category=${previewSlug}`}
-                  className="text-[0.85rem] font-medium text-accent transition-colors hover:text-accent-deep"
+                  className="text-[0.85rem] font-medium text-azure transition-colors hover:text-azure-ink"
                 >
                   View all
                 </Link>
@@ -668,7 +668,7 @@ export function Navbar() {
               )}
 
               <Link
-                href="/contact#stores"
+                href="/stores"
                 className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-[0.8rem] font-medium text-ink transition-colors hover:bg-surface xl:flex"
               >
                 <Store size={16} />
@@ -874,7 +874,7 @@ export function Navbar() {
 
                 <Link
                   href="/categories"
-                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-[0.88rem] font-medium text-accent transition-colors hover:bg-surface"
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-[0.88rem] font-medium text-azure transition-colors hover:bg-surface"
                 >
                   All categories
                 </Link>

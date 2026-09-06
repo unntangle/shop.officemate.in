@@ -42,7 +42,7 @@ export function FooterAddresses() {
                  corporate block reads as a different kind of entry rather
                  than the same card under a different heading. */
               <div key={loc.label}>
-                <p className="flex items-center gap-2 text-[0.72rem] font-bold uppercase tracking-[0.12em] text-accent">
+                <p className="flex items-center gap-2 text-[0.72rem] font-bold uppercase tracking-[0.12em] text-azure">
                   <MapPin size={13} />
                   Chennai
                 </p>
@@ -60,7 +60,7 @@ export function FooterAddresses() {
                   href={loc.mapUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-block text-[0.76rem] font-semibold text-accent hover:text-accent-deep"
+                  className="mt-2 inline-block text-[0.76rem] font-semibold text-azure hover:text-azure-ink"
                 >
                   Get directions →
                 </a>
@@ -89,7 +89,7 @@ export function FooterAddresses() {
             <div key={store.city}>
               {/* City stays as the eyebrow here — with four of these side by
                   side it is the only thing that tells them apart. */}
-              <p className="flex items-center gap-2 text-[0.72rem] font-bold uppercase tracking-[0.12em] text-accent">
+              <p className="flex items-center gap-2 text-[0.72rem] font-bold uppercase tracking-[0.12em] text-azure">
                 <MapPin size={13} />
                 {store.city}
               </p>
@@ -107,7 +107,7 @@ export function FooterAddresses() {
                 href={store.map}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-block text-[0.76rem] font-semibold text-accent hover:text-accent-deep"
+                className="mt-2 inline-block text-[0.76rem] font-semibold text-azure hover:text-azure-ink"
               >
                 Get directions →
               </a>

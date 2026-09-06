@@ -198,7 +198,7 @@ export function ChairHealthScore() {
                   Full breakdown
                   <ArrowUpRight
                     size={16}
-                    className="text-accent transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                    className="text-azure transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
                   />
                 </Link>
               </div>

@@ -126,9 +126,12 @@ const config: Config = {
           soft: "#F0ECF8",
           ink: "#4B3F72",
         },
-        /* Utility blue for viewer controls (3D / AR). Deliberately outside the
-           brand red: these are tools for inspecting the product, not calls to
-           action, and reading them as "buy" would be wrong. */
+        /* Utility blue for the 3D / AR viewer controls and the floating
+           contact dock's trigger. Deliberately outside the brand red: these
+           are tools — for inspecting a product, or for reaching a human — not
+           calls to action, and reading them as "buy" would be wrong. It is
+           also the only blue in the system, so anything that needs to look
+           like a utility should come here rather than pick a fresh hex. */
         azure: {
           DEFAULT: "#2F6FEB",
           soft: "#E8F0FE",
@@ -230,6 +233,20 @@ const config: Config = {
           "60%": { transform: "scale(1.18)", opacity: "1" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        /* Attention halo on the floating contact dock — a ring growing out of
+           the trigger and fading.
+
+           Opacity is spent EARLY (gone by 70%) while the scale keeps running
+           to 2. That asymmetry is the whole effect: the ring is brightest
+           where it is tightest around the button, and has already faded by
+           the time it is large enough to be intrusive. Fading linearly with
+           the growth instead gives a big pale disc hanging over the page for
+           half of every cycle. */
+        "dock-pulse": {
+          "0%": { transform: "scale(1)", opacity: "0.5" },
+          "70%": { opacity: "0" },
+          "100%": { transform: "scale(2)", opacity: "0" },
+        },
       },
       animation: {
         shimmer: "shimmer 1.6s infinite",
@@ -237,6 +254,13 @@ const config: Config = {
         "marquee-slow": "marquee-slow 34s linear infinite",
         "zoom-in-out": "zoom-in-out 10s ease-in-out infinite",
         "badge-pop": "badge-pop 0.32s cubic-bezier(0.22,1,0.36,1)",
+        /* 2.6s, deliberately slow. At around a second this reads as an alarm
+           on a control that is on screen at all times; at 2.6 it registers as
+           a slow breath you notice once and then stop seeing. The long ease
+           puts most of the travel in the first third, so the ring leaves the
+           button quickly and drifts out rather than expanding at a constant
+           machine rate. */
+        "dock-pulse": "dock-pulse 2.6s cubic-bezier(0.22,1,0.36,1) infinite",
       },
     },
   },

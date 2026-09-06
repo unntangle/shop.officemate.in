@@ -36,7 +36,7 @@ export function Categories() {
               View all categories
               <ArrowUpRight
                 size={16}
-                className="text-accent transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                className="text-azure transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
               />
             </Link>
           </Reveal>
@@ -85,7 +85,7 @@ export function Categories() {
                 <p className="text-base">No products in this category yet.</p>
                 <Link
                   href="/categories"
-                  className="mt-3 text-sm font-medium text-accent underline-offset-4 hover:underline"
+                  className="mt-3 text-sm font-medium text-azure underline-offset-4 hover:underline"
                 >
                   Browse all categories
                 </Link>
@@ -99,7 +99,7 @@ export function Categories() {
           <div className="mt-6 text-center">
             <Link
               href={`/categories?category=${activeTab}`}
-              className="group inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-5 py-2 text-sm font-medium text-ink transition-all hover:border-accent hover:text-accent"
+              className="group inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-5 py-2 text-sm font-medium text-ink transition-all hover:border-azure hover:text-azure"
             >
               See all{" "}
               {CATEGORIES.find((c) => c.slug === activeTab)?.name}

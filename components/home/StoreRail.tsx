@@ -37,7 +37,7 @@ export function StoreRail() {
       <div className="container">
         <SectionHead
           title="Visit our experience centres"
-          href="/contact#stores"
+          href="/stores"
           linkLabel={`${STORES.length} locations`}
           description="Book a slot or walk in — the full range is on the floor."
         />

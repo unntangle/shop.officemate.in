@@ -103,8 +103,14 @@ export function CartDrawer() {
                     A filled chip sitting next to the close button read as a
                     second primary action, which Help is not — it is a way out
                     for the small number of people who are stuck. Underlined
-                    grey states that it is a link and lets the checkout button
+                    text states that it is a link and lets the checkout button
                     below keep the weight.
+
+                    Azure rather than grey, matching every other text link on
+                    the site. Grey-on-grey underlined text reads as disabled
+                    to a fair number of people, and this is the one control in
+                    the drawer that someone reaches for when something has
+                    already gone wrong.
 
                     It goes to WhatsApp rather than a support page, because
                     WhatsApp is the only channel that actually answers today.
@@ -114,7 +120,7 @@ export function CartDrawer() {
                   href={waChatHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-1 text-[0.8rem] font-medium text-muted underline underline-offset-4 transition-colors hover:text-ink"
+                  className="px-1 text-[0.8rem] font-medium text-azure underline underline-offset-4 transition-colors hover:text-azure-ink"
                 >
                   Help
                 </a>
@@ -294,7 +300,7 @@ export function CartDrawer() {
                 <Link
                   href="/cart"
                   onClick={closeDrawer}
-                  className="mt-2.5 block text-center text-[0.8rem] font-medium text-muted underline-offset-4 hover:text-ink hover:underline"
+                  className="mt-2.5 block text-center text-[0.8rem] font-medium text-azure underline-offset-4 transition-colors hover:text-azure-ink hover:underline"
                 >
                   View full cart
                 </Link>

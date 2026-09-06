@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { waChatHref } from "@/lib/whatsapp";
+import { cn } from "@/lib/utils";
 import { EASE } from "@/lib/motion";
 
 /**
@@ -37,16 +38,43 @@ import { EASE } from "@/lib/motion";
  * WHAT REPLACING IT INVOLVES, so it is not underestimated:
  *
  *   1. `POST /api/auth/request-otp` — server generates the code, stores a
- *      hash of it with a short TTL, sends the SMS or email. It must return
- *      NOTHING about the code.
+ *      hash of it with a short TTL, sends the WhatsApp message. It must
+ *      return NOTHING about the code.
  *   2. `POST /api/auth/verify-otp` — server compares, and on success issues an
  *      httpOnly, Secure, SameSite session cookie.
  *   3. Rate limiting on both, per identifier AND per IP. Without it this is a
- *      free SMS pump that bills the client for every request an attacker makes.
+ *      free message pump that bills the client for every request an attacker
+ *      makes.
  *   4. An attempt cap — five tries, then the code is burned. Six digits is a
  *      million combinations, which is minutes of brute force without one.
- *   5. In India, an SMS sender ID and template registered on the DLT registry
- *      before any transactional SMS can be delivered at all.
+ *   5. A verified Meta business, a dedicated sender number NOT already on
+ *      WhatsApp, and an approved Authentication-category template. Until the
+ *      business is verified the account sits at Tier 0 and cannot send
+ *      authentication templates at all.
+ *
+ * CHANNEL: WHATSAPP ONLY, DELIBERATELY.
+ *
+ * SMS is not wired up and is not the next step. Transactional SMS in India
+ * needs DLT registration with TRAI — a Principal Entity, a registered header
+ * and an approved template, all three before the first message delivers — and
+ * that is being done later. WhatsApp requires none of it, which is the whole
+ * reason it goes first.
+ *
+ * ⚠ THE COST OF THAT CHOICE, IN ONE LINE: anyone whose number is not on
+ * WhatsApp cannot sign in. Dual-SIM users whose WhatsApp lives on the other
+ * number, people who uninstalled it, and landlines — which matters here,
+ * because this storefront courts dealers and procurement teams who give a
+ * desk number. Reckon on one in ten to one in twenty attempts.
+ *
+ * That is acceptable ONLY while the account area protects nothing: the orders
+ * panel is permanently empty, checkout persists nothing, and the wishlist is
+ * this browser's localStorage either way. The people it strands lose the
+ * ability to save a wishlist, not an order.
+ *
+ * WHEN COVERAGE BECOMES THE PROBLEM, REACH FOR EMAIL BEFORE DLT. It needs no
+ * telecom registration at all, and app/account/setup/page.tsx already runs an
+ * email code screen with the same six-box input — so the second channel is
+ * mostly wiring, not design.
  *
  * NO GOOGLE OR EMAIL BUTTON, despite the reference having both. OAuth needs a
  * real provider, a client ID, a redirect URI and a session to put the result
@@ -56,16 +84,16 @@ import { EASE } from "@/lib/motion";
  *
  * Email was built and then removed on request. Mobile is the right single
  * channel for an Indian storefront anyway — it is the identifier customers
- * already give for delivery, and it is the one an SMS OTP needs.
+ * already give for delivery, and it is the one a WhatsApp OTP needs.
  */
 
 /**
  * Whether to generate and show the code in the browser.
  *
- * TRUE  — the stand-in. Code shown on screen, no SMS or email, no session.
+ * TRUE  — the stand-in. Code shown on screen, nothing sent, no session.
  * FALSE — the flow stops at the identifier and points the person at WhatsApp
- *         instead. Use this the moment the real endpoints exist but are not
- *         yet wired, so the flow is never half-real.
+ *         chat instead. Use this the moment the real endpoints exist but are
+ *         not yet wired, so the flow is never half-real.
  *
  * A constant rather than an env var, on purpose. An env var makes it possible
  * for staging and production to disagree about whether authentication is
@@ -75,6 +103,13 @@ const DEMO_OTP = true;
 
 /** Indian mobile numbers are ten digits and start 6-9. */
 const PHONE_RE = /^[6-9]\d{9}$/;
+
+/* WhatsApp brand green. Deliberately a literal rather than a Tailwind token,
+   matching how FloatingDock and BulkOrderBand treat it: the colour belongs to
+   WhatsApp, not to Officemate, and putting it in the palette would invite it
+   to be reused as if it were ours. `save.DEFAULT` is the green that carries
+   meaning in this design system. */
+const WHATSAPP_GREEN = "#25D366";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 30;
@@ -93,6 +128,23 @@ export function LoginModal({
 }) {
   const [step, setStep] = useState<Step>("identify");
   const [phone, setPhone] = useState("");
+  /**
+   * WhatsApp opt-in — CONSENT, not a channel switch.
+   *
+   * Meta requires explicit opt-in before a business messages someone, and a
+   * ticked box on your own site is one of the accepted methods. So this is
+   * the consent record, and its value must be logged SERVER-SIDE with the
+   * number when `request-otp` lands — a value only read on the client proves
+   * nothing to anyone auditing it.
+   *
+   * IT SELECTS NOTHING. WhatsApp is the only channel wired up, so unticking
+   * does not fall back to SMS — it blocks the send and says why. An earlier
+   * version was labelled as though it chose between two channels, which is
+   * the worse failure: a control that looks like a switch and silently does
+   * nothing. If SMS is ever added, this becomes a real choice and the guard
+   * in `sendCode` comes out.
+   */
+  const [waOptIn, setWaOptIn] = useState(true);
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [sentCode, setSentCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +162,7 @@ export function LoginModal({
   const reset = useCallback(() => {
     setStep("identify");
     setPhone("");
+    setWaOptIn(true);
     setDigits(Array(OTP_LENGTH).fill(""));
     setSentCode(null);
     setError(null);
@@ -155,6 +208,15 @@ export function LoginModal({
   const sendCode = () => {
     if (!PHONE_RE.test(phone)) {
       setError("Enter a valid 10-digit mobile number.");
+      return;
+    }
+    /* WhatsApp is the only channel, so consent is not optional — without it
+       there is nowhere to send the code. Blocking with an explanation is
+       honest; quietly sending anyway would breach Meta's opt-in policy. */
+    if (!waOptIn) {
+      setError(
+        "We can only send the code on WhatsApp right now — tick the box to continue."
+      );
       return;
     }
     setError(null);
@@ -320,9 +382,12 @@ export function LoginModal({
                   Login / Sign up
                 </h2>
                 <p className="mt-1 text-[0.85rem] text-muted">
-                  {step === "identify" &&
-                    "We'll send a one-time code to your mobile."}
-                  {step === "otp" && `Code sent to ${sentTo}`}
+                  {/* The subtitle names the channel outright. WhatsApp is the
+                      only one wired up, so there is nothing to vary — and
+                      saying so here is what makes the checkbox below read as
+                      consent rather than as a choice. */}
+                  {step === "identify" && "We'll send a one-time code on WhatsApp."}
+                  {step === "otp" && `Code sent to ${sentTo} on WhatsApp`}
                   {step === "unavailable" && "Sign-in isn't switched on yet."}
                 </p>
 
@@ -432,6 +497,65 @@ export function LoginModal({
                         </p>
                       )}
 
+                      {/* WhatsApp opt-in.
+
+                          A real `<input type="checkbox">`, visually hidden and
+                          replaced by the styled box beside it, rather than a
+                          `<button role="checkbox">`. Wrapped in a <label> the
+                          native control gives keyboard toggling with Space,
+                          the correct role and state to a screen reader, and a
+                          click target that covers the text — all for free.
+                          `sr-only` keeps it focusable; `hidden` would not.
+
+                          CONSENT, NOT A CHANNEL PICKER — see the note on
+                          `waOptIn`. The label says "Send my code on WhatsApp"
+                          rather than "Get OTP via WhatsApp", because the
+                          latter reads as one option among several and there
+                          is only one. Unticking blocks the send with an
+                          explanation rather than silently doing nothing.
+
+                          WhatsApp green on the tick, not the palette's `save`
+                          green. This box names a specific third-party channel,
+                          and the brand colour is what makes it recognisable at
+                          a glance. See the note on WHATSAPP_GREEN above. */}
+                      <label className="mt-4 flex cursor-pointer items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={waOptIn}
+                          onChange={(e) => {
+                            setWaOptIn(e.target.checked);
+                            setError(null);
+                          }}
+                          className="peer sr-only"
+                        />
+                        <span
+                          aria-hidden
+                          style={
+                            waOptIn
+                              ? {
+                                  backgroundColor: WHATSAPP_GREEN,
+                                  borderColor: WHATSAPP_GREEN,
+                                }
+                              : undefined
+                          }
+                          className={cn(
+                            "grid h-5 w-5 shrink-0 place-items-center rounded-md border-2 transition-colors",
+                            /* The ring is on this box rather than the input,
+                               which is off-screen — without it a keyboard user
+                               tabbing here sees no focus at all. */
+                            "peer-focus-visible:ring-2 peer-focus-visible:ring-ink peer-focus-visible:ring-offset-2",
+                            waOptIn
+                              ? "text-white"
+                              : "border-line bg-white text-transparent"
+                          )}
+                        >
+                          <Check size={13} strokeWidth={3} />
+                        </span>
+                        <span className="text-[0.88rem] font-medium text-ink">
+                          Send my code on WhatsApp
+                        </span>
+                      </label>
+
                       <button
                         onClick={sendCode}
                         className="mt-4 h-12 w-full rounded-xl bg-night text-[0.9rem] font-semibold text-white transition-colors hover:bg-night-soft active:scale-[0.99]"
@@ -441,11 +565,17 @@ export function LoginModal({
 
                       <p className="mt-3 text-center text-[0.72rem] leading-relaxed text-muted">
                         By continuing you agree to our{" "}
-                        <a href="/resources/terms" className="underline hover:text-ink">
+                        <a
+                          href="/resources/terms"
+                          className="font-medium text-azure underline hover:text-azure-ink"
+                        >
                           Terms
                         </a>{" "}
                         and{" "}
-                        <a href="/resources/privacy" className="underline hover:text-ink">
+                        <a
+                          href="/resources/privacy"
+                          className="font-medium text-azure underline hover:text-azure-ink"
+                        >
                           Privacy policy
                         </a>
                         .

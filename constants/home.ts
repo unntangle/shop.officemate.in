@@ -31,7 +31,7 @@ export const SHOP_NAV: { label: string; href: string; highlight?: boolean }[] = 
   { label: "Storage", href: "/categories?category=office-storage" },
   { label: "Wellness", href: "/categories?category=work-wellness" },
   { label: "Bulk Orders", href: "/contact?intent=bulk" },
-  { label: "Stores", href: "/contact#stores" },
+  { label: "Stores", href: "/stores" },
   { label: "Offers", href: "/categories?sort=discount", highlight: true },
 ];
 
