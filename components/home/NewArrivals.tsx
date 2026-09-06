@@ -56,7 +56,7 @@ export function NewArrivals() {
         <SectionHead
           kicker="Just landed"
           title="New arrivals"
-          href="/products?category=office-chairs"
+          href="/categories?category=office-chairs"
           description="The full seating range — executive, task, training and cafe."
         />
 

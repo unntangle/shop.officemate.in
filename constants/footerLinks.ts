@@ -31,7 +31,10 @@ import { PRODUCTS, PRODUCT_IMAGES } from "@/constants/products";
         empty grid. Non-chair categories are therefore linked at category
         level only.
 
-   A THIRD, EASY TRAP: /products/<slug> is NOT valid for all 44 models.
+   A THIRD, EASY TRAP: /products/<slug> is NOT valid for all 44 models. Note
+   the listing page lives at /categories while an individual product page is
+   still /products/<slug> — the two are different routes, and `plp` below is
+   the only place that should build the former.
    `app/products/[slug]/page.tsx` resolves through `getProduct`, which reads
    PRODUCTS — the nine richly-specified records — and calls `notFound()` for
    anything else. A model can appear in the listing grid (CATALOG merges
@@ -59,11 +62,11 @@ export type FooterLinkColumn = {
   sets: FooterLinkSet[];
 };
 
-/** Product listing page URL. See rule 2 above before passing `sub`. */
+/** Category listing page URL. See rule 2 above before passing `sub`. */
 const plp = (category: CategorySlug, sub?: string) =>
   sub
-    ? `/products?category=${category}&sub=${encodeURIComponent(sub)}`
-    : `/products?category=${category}`;
+    ? `/categories?category=${category}&sub=${encodeURIComponent(sub)}`
+    : `/categories?category=${category}`;
 
 /**
  * "Executive Series" → "Executive Chairs", but "Cafe Chairs Series" stays
@@ -120,11 +123,11 @@ const OTHER_CATEGORY_LINKS: FooterLink[] = CATEGORIES.filter(
  * question ("what's cheapest", "what's new", "what's discounted").
  */
 const BROWSE_LINKS: FooterLink[] = [
-  { label: "All products", href: "/products" },
-  { label: "Biggest discounts", href: "/products?sort=discount" },
-  { label: "New arrivals", href: "/products?sort=newest" },
-  { label: "Most reviewed", href: "/products?sort=popular" },
-  { label: "Price: low to high", href: "/products?sort=price-asc" },
+  { label: "All categories", href: "/categories" },
+  { label: "Biggest discounts", href: "/categories?sort=discount" },
+  { label: "New arrivals", href: "/categories?sort=newest" },
+  { label: "Most reviewed", href: "/categories?sort=popular" },
+  { label: "Price: low to high", href: "/categories?sort=price-asc" },
   { label: "Ergonomic Advisor", href: "/advisor" },
 ];
 

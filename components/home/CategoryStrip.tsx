@@ -57,7 +57,7 @@ export function CategoryStrip() {
             return (
               <Link
                 key={category.slug}
-                href={`/products?category=${category.slug}`}
+                href={`/categories?category=${category.slug}`}
                 className="group flex shrink-0 flex-col items-center text-center"
               >
                 {/* rounded-xl (16px), not the 24px the product cards use.

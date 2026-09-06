@@ -196,7 +196,7 @@ export function SearchBar({
     e.preventDefault();
     if (!query.trim()) return;
     setOpen(false);
-    router.push(`/products?q=${encodeURIComponent(query.trim())}`);
+    router.push(`/categories?q=${encodeURIComponent(query.trim())}`);
   };
 
   return (
@@ -332,7 +332,7 @@ export function SearchBar({
               {CATEGORIES.map((c) => (
                 <Link
                   key={c.slug}
-                  href={`/products?category=${c.slug}`}
+                  href={`/categories?category=${c.slug}`}
                   onClick={() => setOpen(false)}
                   className="group text-center"
                 >
@@ -372,7 +372,7 @@ export function SearchBar({
                   {results.categories.map((c) => (
                     <Link
                       key={c.slug}
-                      href={`/products?category=${c.slug}`}
+                      href={`/categories?category=${c.slug}`}
                       onClick={() => setOpen(false)}
                       className="flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-surface"
                     >

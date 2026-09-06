@@ -57,7 +57,7 @@ export default function WishlistPage() {
               Tap the heart on any product to keep it here while you compare.
             </p>
             <Link
-              href="/products"
+              href="/categories"
               className="mt-7 inline-flex h-12 items-center rounded-full bg-accent px-7 text-sm font-semibold text-white transition-colors hover:bg-accent-deep"
             >
               Browse the range

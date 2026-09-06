@@ -5,7 +5,10 @@ import { SITE } from "@/constants/site";
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
 
-  const staticRoutes = ["", "/products", "/about", "/contact"].map((path) => ({
+  /* The catalogue listing lives at /categories now. The per-product routes
+     below are unaffected — /products/<slug> is still where a product page
+     lives, and only the browse-by-category page moved. */
+  const staticRoutes = ["", "/categories", "/about", "/contact"].map((path) => ({
     url: `${SITE.url}${path}`,
     lastModified: now,
     changeFrequency: "monthly" as const,

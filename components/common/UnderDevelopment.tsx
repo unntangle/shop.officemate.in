@@ -34,7 +34,7 @@ export function UnderDevelopment({
         </p>
         <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
           <Button asChild variant="primary" size="lg">
-            <Link href="/products">Browse products</Link>
+            <Link href="/categories">Browse categories</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
             <Link href="/">Back home</Link>

@@ -120,7 +120,7 @@ export function Hero() {
                 className="mt-6 flex flex-wrap items-center gap-3"
               >
                 <Button asChild variant="primary" size="lg" className="group">
-                  <Link href="/products">
+                  <Link href="/categories">
                     Explore the range
                     <ArrowRight
                       size={17}
@@ -142,7 +142,7 @@ export function Hero() {
         {/* Bottom-right category pill */}
         <div className="absolute bottom-10 right-6 md:bottom-14 md:right-14 z-10">
           <Link
-            href="/products"
+            href="/categories"
             className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/25"
           >
             {slide.category}

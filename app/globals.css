@@ -1,7 +1,21 @@
-/* Typeface is loaded in app/layout.tsx via next/font (Plus Jakarta Sans),
-   which self-hosts the files and exposes them as --font-jakarta. Do not add an
-   @import here: the previous "Google Sans" import pulled a proprietary Google
-   typeface from an unlicensed third-party mirror. */
+/* Typeface is loaded in app/layout.tsx via next/font (Poppins), which
+   self-hosts the files and exposes them as --font-sans. tailwind.config.ts
+   reads that variable for both `fontFamily.sans` and `fontFamily.display`, so
+   Poppins is the single face across the site.
+
+   DO NOT REDECLARE --font-sans OR --font-display HERE. next/font already sets
+   --font-sans on <html> via the class in layout.tsx, and a `:root` rule in
+   this file lands on that same element at the same specificity — so which one
+   wins comes down to stylesheet source order, which can differ between dev
+   and a production build. This file carried exactly that bug: it redefined
+   both in terms of --font-jakarta, a variable left behind by an earlier Plus
+   Jakarta Sans build that nothing defines any more. When the `:root` rule
+   won, --font-sans resolved to the guaranteed-invalid value and the whole
+   site silently rendered in the browser's default face while still paying to
+   download Poppins.
+
+   Do not add an @import here either: the previous "Google Sans" import pulled
+   a proprietary Google typeface from an unlicensed third-party mirror. */
 
 @tailwind base;
 @tailwind components;
@@ -106,8 +120,12 @@
 @layer base {
   :root {
     color-scheme: light;
-    --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
-    --font-display: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+    /* No font variables here — see the note at the top of this file.
+       --font-sans comes from next/font in app/layout.tsx, and --font-display
+       is deliberately left unset so tailwind.config.ts's
+       `var(--font-display, var(--font-sans))` falls through to it. That is
+       what keeps `.display` headings on Poppins rather than on a second face
+       nobody loads. */
   }
 
   html {

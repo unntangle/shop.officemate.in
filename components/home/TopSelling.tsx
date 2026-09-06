@@ -21,7 +21,7 @@ export function TopSelling() {
         <SectionHead
           kicker="Most ordered this quarter"
           title="Top selling"
-          href="/products?sort=popular"
+          href="/categories?sort=popular"
         />
 
         <Rail ariaLabel="Top selling products">

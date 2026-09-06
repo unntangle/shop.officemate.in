@@ -26,7 +26,7 @@ export function FurnitureTabs() {
         <SectionHead
           kicker="Browse the full range"
           title="Office furniture"
-          href="/products"
+          href="/categories"
         />
 
         <div
@@ -61,7 +61,7 @@ export function FurnitureTabs() {
             return (
               <Link
                 key={sub}
-                href={`/products?category=${tab.category}&sub=${encodeURIComponent(sub)}`}
+                href={`/categories?category=${tab.category}&sub=${encodeURIComponent(sub)}`}
                 className="group block"
               >
                 <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-white transition-all duration-300 group-hover:border-accent/40 group-hover:shadow-lift">

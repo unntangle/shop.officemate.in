@@ -218,7 +218,7 @@ export function AdvisorFlow() {
                   product={results[0]?.product.name}
                 />
                 <Link
-                  href="/products"
+                  href="/categories"
                   className="group inline-flex items-center gap-2 rounded-full bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-line/70"
                 >
                   Browse the full range

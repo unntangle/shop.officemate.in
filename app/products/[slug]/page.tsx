@@ -422,10 +422,10 @@ export default async function ProductDetailPage({
             <div className="flex items-end justify-between gap-6">
               <SectionHeading eyebrow="Keep exploring" title="You might also like" />
               <Link
-                href="/products"
+                href="/categories"
                 className="hidden shrink-0 items-center gap-1.5 text-sm font-medium text-ink transition-colors hover:text-accent sm:flex"
               >
-                All products <ArrowRight size={15} />
+                All categories <ArrowRight size={15} />
               </Link>
             </div>
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

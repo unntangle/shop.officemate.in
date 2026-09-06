@@ -156,7 +156,7 @@ export default function CheckoutPage() {
           </div>
 
           <Link
-            href="/products"
+            href="/categories"
             className="mt-7 inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
           >
             Continue shopping
@@ -176,7 +176,7 @@ export default function CheckoutPage() {
         <h1 className="mt-6 text-2xl font-bold text-ink">Nothing to check out</h1>
         <p className="mt-2 text-sm text-muted">Your cart is empty.</p>
         <Link
-          href="/products"
+          href="/categories"
           className="mt-6 inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
         >
           Shop the range

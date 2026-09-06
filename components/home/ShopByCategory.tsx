@@ -43,7 +43,7 @@ export function ShopByCategory() {
       <div className="container">
         <SectionHead
           title="Shop by category"
-          href="/products"
+          href="/categories"
           align="left"
           rule
           description="Eight ranges, every one built on the same frame and finish system."
@@ -59,7 +59,7 @@ export function ShopByCategory() {
             return (
               <Link
                 key={category.slug}
-                href={`/products?category=${category.slug}`}
+                href={`/categories?category=${category.slug}`}
                 className={`group relative overflow-hidden rounded-2xl bg-surface ${spanFor(i)}`}
               >
                 <Image

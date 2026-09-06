@@ -178,7 +178,7 @@ export function Footer() {
               {CATEGORIES.map((c) => (
                 <li key={c.slug}>
                   <Link
-                    href={`/products?category=${c.slug}`}
+                    href={`/categories?category=${c.slug}`}
                     className="text-[0.8rem] text-muted transition-colors hover:text-accent"
                   >
                     {c.name}

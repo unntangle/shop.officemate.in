@@ -121,7 +121,7 @@ export function FlashSaleStrip() {
           title="These deals are too good to scroll past"
           sub="Extra 7% off with select bank cards, today only."
           cta="Shop deals"
-          href="/products?sort=discount"
+          href="/categories?sort=discount"
         />
       </div>
     </section>

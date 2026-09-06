@@ -38,7 +38,7 @@ export function BestSellers() {
       <div className="container">
         <SectionHead
           title="Best sellers"
-          href="/products?category=office-chairs"
+          href="/categories?category=office-chairs"
           description="The chairs our customers rate highest, in stock and shipping now."
         />
 

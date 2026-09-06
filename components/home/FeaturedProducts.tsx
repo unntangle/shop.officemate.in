@@ -23,7 +23,7 @@ export function FeaturedProducts() {
           />
           <Reveal>
             <Link
-              href="/products"
+              href="/categories"
               className="group inline-flex items-center gap-1.5 text-sm font-medium text-ink"
             >
               View all

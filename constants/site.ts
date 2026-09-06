@@ -69,7 +69,7 @@ export const LOCATIONS = [
 export const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Company", href: "/company" },
-  { label: "Products", href: "/products", hasDropdown: true },
+  { label: "Categories", href: "/categories", hasDropdown: true },
   { label: "Ergonomic Advisor", href: "/advisor" },
   { label: "Projects", href: "/projects" },
   { label: "Infrastructure", href: "/infrastructure" },

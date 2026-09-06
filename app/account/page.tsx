@@ -197,7 +197,7 @@ export default function AccountPage() {
                 installation updates.
               </p>
               <Link
-                href="/products"
+                href="/categories"
                 className="mt-6 rounded-xl bg-night px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
               >
                 Start shopping
@@ -220,7 +220,7 @@ export default function AccountPage() {
           <section className="lg:col-start-2">
             <SectionHead
               title="Best selling products"
-              href="/products?category=office-chairs"
+              href="/categories?category=office-chairs"
               description="The chairs our customers rate highest, in stock and shipping now."
             />
 

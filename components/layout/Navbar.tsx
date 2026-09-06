@@ -262,15 +262,29 @@ export function Navbar() {
   /**
    * Where the category nav lives.
    *
-   * Signed in it sits INLINE, between the logo and the icons, and the search
-   * field collapses to an icon to make room. Signed out it keeps its own
-   * centred row underneath, and the search field stays inline instead.
+   * INLINE (between the logo and the icons, search collapsed to an icon) on
+   * every page EXCEPT the homepage. The homepage keeps its own centred nav
+   * row underneath, with the full-width search field inline in the logo row.
+   *
+   * DRIVEN BY ROUTE, NOT BY SIGN-IN STATE, and the change matters for more
+   * than taste. This used to be `authReady && signedIn`, and `authReady` is
+   * false until localStorage is read after mount — so the first paint was
+   * always the two-row form and a signed-in visitor then watched the entire
+   * second row unmount, jerking the page up by about 48px on every single
+   * navigation. `pathname` is known identically on the server and the client,
+   * so the header now renders once and stays put.
+   *
+   * The reasoning behind the two shapes is unchanged: the homepage is where
+   * someone arrives without a destination, so search dominates and the
+   * categories get a row of their own. Deeper in the site they already know
+   * roughly what they want, so the nav goes inline and search steps back to
+   * an icon.
    *
    * Only one of the two ever renders, and both take their markup from
    * `renderNav` / `menuPanel` below — rendered twice from copied JSX, the two
    * would drift within a week.
    */
-  const navInline = authReady && signedIn;
+  const navInline = pathname !== "/";
 
   /**
    * The nav triggers, plus the corporate links on the standalone row only.
@@ -286,6 +300,63 @@ export function Navbar() {
     <>
       {SHOP_MENUS.map((menu) => {
         const isOpen = openMenu === menu.id;
+
+        /* Shared by both trigger forms below so the link and the buttons
+           cannot drift apart visually. */
+        const triggerClass = `flex h-full items-center gap-1.5 whitespace-nowrap px-3.5 text-[0.85rem] font-medium transition-colors ${
+          isOpen ? "text-accent" : "text-ink hover:text-accent"
+        }`;
+
+        const chevron = (
+          <ChevronDown
+            size={14}
+            className={`transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        );
+
+        /* "All Categories" NAVIGATES. The four group triggers only open a
+           panel.
+
+           The asymmetry is deliberate and follows what each one actually is.
+           "All" has a real destination — /categories is the listing page
+           showing every category — while "Sit", "Work", "Relax" and "Focus"
+           are groupings that exist only inside this menu and have no page of
+           their own. A button that goes nowhere is correct for those and
+           wrong for this one: someone clicking "All Categories" is asking to
+           see all the categories, not to be handed a panel and left there.
+
+           Nothing is lost by the change. Hover and keyboard focus still open
+           the mega-menu exactly as before, so the panel is as reachable as it
+           ever was — the click that used to toggle it shut now goes to the
+           full listing instead.
+
+           `onClick` CLOSES rather than toggles, and that matters: navigation
+           is about to happen, and a panel left open would hang over the page
+           being navigated to. The pathname effect above also clears it, but
+           only after the route resolves; closing here avoids the flash in
+           between. */
+        if (menu.id === "all") {
+          return (
+            <Link
+              key={menu.id}
+              href="/categories"
+              onMouseEnter={() => scheduleOpen(menu.id)}
+              onFocus={() => {
+                cancelOpen();
+                setOpenMenu(menu.id);
+              }}
+              onClick={closeNow}
+              aria-expanded={isOpen}
+              className={triggerClass}
+            >
+              {menu.label}
+              {chevron}
+            </Link>
+          );
+        }
+
         return (
           <button
             key={menu.id}
@@ -301,17 +372,10 @@ export function Navbar() {
               setOpenMenu(isOpen ? null : menu.id);
             }}
             aria-expanded={isOpen}
-            className={`flex h-full items-center gap-1.5 whitespace-nowrap px-3.5 text-[0.85rem] font-medium transition-colors ${
-              isOpen ? "text-accent" : "text-ink hover:text-accent"
-            }`}
+            className={triggerClass}
           >
             {menu.label}
-            <ChevronDown
-              size={14}
-              className={`transition-transform duration-200 ${
-                isOpen ? "rotate-180" : ""
-              }`}
-            />
+            {chevron}
           </button>
         );
       })}
@@ -369,7 +433,7 @@ export function Navbar() {
                   {activeMenu.categories.map((category) => (
                     <Link
                       key={category.slug}
-                      href={`/products?category=${category.slug}`}
+                      href={`/categories?category=${category.slug}`}
                       className={menuCell4}
                     >
                       {/* The well is static; only the photo inside it moves.
@@ -394,7 +458,7 @@ export function Navbar() {
 
               <div className="mt-7 flex justify-end">
                 <Link
-                  href="/products"
+                  href="/categories"
                   className="text-[0.85rem] font-medium text-accent transition-colors hover:text-accent-deep"
                 >
                   View all
@@ -482,7 +546,7 @@ export function Navbar() {
                       previewCategory.subcategories.map((series) => (
                         <Link
                           key={series}
-                          href={`/products?category=${previewSlug}&sub=${encodeURIComponent(series)}`}
+                          href={`/categories?category=${previewSlug}&sub=${encodeURIComponent(series)}`}
                           className={menuCell5}
                         >
                           <span className="relative block h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface">
@@ -504,7 +568,7 @@ export function Navbar() {
 
               <div className="mt-7 flex justify-end">
                 <Link
-                  href={`/products?category=${previewSlug}`}
+                  href={`/categories?category=${previewSlug}`}
                   className="text-[0.85rem] font-medium text-accent transition-colors hover:text-accent-deep"
                 >
                   View all
@@ -618,8 +682,16 @@ export function Navbar() {
               {/* Wishlist appears only once someone has signed in. This hides
                   the ICON, not the data — the wishlist lives in this browser's
                   storage either way. It is a UI affordance, not a permission.
-                  See AuthProvider. */}
-              {navInline && (
+                  See AuthProvider.
+
+                  Gated on sign-in rather than on `navInline`: those two used
+                  to be the same expression, and splitting the layout off from
+                  the auth state would otherwise have shown a wishlist icon to
+                  signed-out visitors on every page but the homepage.
+
+                  `authReady` holds it back until localStorage has been read,
+                  so the icon does not render and then vanish a frame later. */}
+              {authReady && signedIn && (
                 <Link
                   href="/wishlist"
                   aria-label={`Wishlist${wishCount ? `, ${wishCount} saved` : ""}`}
@@ -789,7 +861,7 @@ export function Navbar() {
                       {categoriesIn(group).map((c) => (
                         <li key={c.slug}>
                           <Link
-                            href={`/products?category=${c.slug}`}
+                            href={`/categories?category=${c.slug}`}
                             className="flex items-center justify-between rounded-lg px-3 py-2.5 text-[0.88rem] font-medium text-ink transition-colors hover:bg-surface"
                           >
                             {c.name}
@@ -801,7 +873,7 @@ export function Navbar() {
                 ))}
 
                 <Link
-                  href="/products"
+                  href="/categories"
                   className="flex items-center justify-between rounded-lg px-3 py-2.5 text-[0.88rem] font-medium text-accent transition-colors hover:bg-surface"
                 >
                   All categories

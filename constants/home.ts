@@ -22,17 +22,17 @@ export const ANNOUNCEMENTS = [
 
 /** Top-level category nav under the search bar. */
 export const SHOP_NAV: { label: string; href: string; highlight?: boolean }[] = [
-  { label: "Chairs", href: "/products?category=office-chairs" },
-  { label: "Desks", href: "/products?category=office-tables" },
-  { label: "Workstations", href: "/products?category=work-stations" },
-  { label: "Sofas", href: "/products?category=soft-sofas" },
-  { label: "Lounges", href: "/products?category=leisure-lounges" },
-  { label: "Pods", href: "/products?category=tele-pods" },
-  { label: "Storage", href: "/products?category=office-storage" },
-  { label: "Wellness", href: "/products?category=work-wellness" },
+  { label: "Chairs", href: "/categories?category=office-chairs" },
+  { label: "Desks", href: "/categories?category=office-tables" },
+  { label: "Workstations", href: "/categories?category=work-stations" },
+  { label: "Sofas", href: "/categories?category=soft-sofas" },
+  { label: "Lounges", href: "/categories?category=leisure-lounges" },
+  { label: "Pods", href: "/categories?category=tele-pods" },
+  { label: "Storage", href: "/categories?category=office-storage" },
+  { label: "Wellness", href: "/categories?category=work-wellness" },
   { label: "Bulk Orders", href: "/contact?intent=bulk" },
   { label: "Stores", href: "/contact#stores" },
-  { label: "Offers", href: "/products?sort=discount", highlight: true },
+  { label: "Offers", href: "/categories?sort=discount", highlight: true },
 ];
 
 /**
@@ -52,7 +52,7 @@ export const HERO_SLIDES = [
     eyebrow: "Workspace Upgrade Sale",
     heading: "Chairs from ₹8,900",
     sub: "Up to 30% off across the seating range. Free installation included.",
-    cta: { label: "Shop chairs", href: "/products?category=office-chairs" },
+    cta: { label: "Shop chairs", href: "/categories?category=office-chairs" },
     align: "left" as const,
   },
   {
@@ -60,7 +60,7 @@ export const HERO_SLIDES = [
     eyebrow: "New — Altura sit-stand",
     heading: "Sit. Stand. Repeat.",
     sub: "Single-motor height adjustment with three presets and a bamboo top.",
-    cta: { label: "Shop desks", href: "/products?category=office-tables" },
+    cta: { label: "Shop desks", href: "/categories?category=office-tables" },
     align: "left" as const,
   },
   {
@@ -223,32 +223,32 @@ export const ZONE_TILES: { label: string; blurb: string; href: string }[] = [
   {
     label: "Private Cabin",
     blurb: "Executive desk, chair and storage",
-    href: "/products?category=office-tables",
+    href: "/categories?category=office-tables",
   },
   {
     label: "Open Floor",
     blurb: "Workstations and task seating",
-    href: "/products?category=work-stations",
+    href: "/categories?category=work-stations",
   },
   {
     label: "Meeting Room",
     blurb: "Conference tables and boardroom chairs",
-    href: "/products?category=office-tables&sub=Conference%20Table%20Series",
+    href: "/categories?category=office-tables&sub=Conference%20Table%20Series",
   },
   {
     label: "Reception",
     blurb: "Sofas and visitor seating",
-    href: "/products?category=soft-sofas",
+    href: "/categories?category=soft-sofas",
   },
   {
     label: "Breakout",
     blurb: "Lounges, barstools and cafe chairs",
-    href: "/products?category=leisure-lounges",
+    href: "/categories?category=leisure-lounges",
   },
   {
     label: "Home Office",
     blurb: "Compact desks and ergonomic chairs",
-    href: "/products?category=office-chairs&sub=Task%20Series",
+    href: "/categories?category=office-chairs&sub=Task%20Series",
   },
 ];
 

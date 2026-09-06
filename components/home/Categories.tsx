@@ -30,10 +30,10 @@ export function Categories() {
           />
           <Reveal>
             <Link
-              href="/products"
+              href="/categories"
               className="group inline-flex items-center gap-1.5 text-sm font-medium text-ink"
             >
-              View all products
+              View all categories
               <ArrowUpRight
                 size={16}
                 className="text-accent transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
@@ -84,10 +84,10 @@ export function Categories() {
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center text-muted">
                 <p className="text-base">No products in this category yet.</p>
                 <Link
-                  href="/products"
+                  href="/categories"
                   className="mt-3 text-sm font-medium text-accent underline-offset-4 hover:underline"
                 >
-                  Browse all products
+                  Browse all categories
                 </Link>
               </div>
             )}
@@ -98,7 +98,7 @@ export function Categories() {
         {filteredProducts.length > 0 && (
           <div className="mt-6 text-center">
             <Link
-              href={`/products?category=${activeTab}`}
+              href={`/categories?category=${activeTab}`}
               className="group inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-5 py-2 text-sm font-medium text-ink transition-all hover:border-accent hover:text-accent"
             >
               See all{" "}

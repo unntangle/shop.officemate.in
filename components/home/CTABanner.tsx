@@ -70,7 +70,7 @@ export function CTABanner() {
                   label="Enquire Now"
                 />
                 <Button asChild variant="outline" size="lg" className="border-white/25 text-white hover:border-white hover:bg-white/5">
-                  <Link href="/products">
+                  <Link href="/categories">
                     Browse the range
                     <ArrowUpRight size={16} />
                   </Link>

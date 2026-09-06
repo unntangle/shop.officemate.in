@@ -65,10 +65,10 @@ export default function CartPage() {
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link
-              href="/products"
+              href="/categories"
               className="inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
             >
-              Shop all products
+              Shop all categories
             </Link>
             <Link
               href="/advisor"
@@ -88,7 +88,7 @@ export default function CartPage() {
     <div className="bg-surface py-8 md:py-10">
       <div className="container">
         <Link
-          href="/products"
+          href="/categories"
           className="group inline-flex items-center gap-1.5 text-[0.82rem] font-medium text-muted transition-colors hover:text-ink"
         >
           <ArrowLeft

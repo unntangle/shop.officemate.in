@@ -142,7 +142,7 @@ export function CartDrawer() {
                     </p>
                   </div>
                   <Link
-                    href="/products"
+                    href="/categories"
                     onClick={closeDrawer}
                     className="rounded-xl bg-night px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
                   >
