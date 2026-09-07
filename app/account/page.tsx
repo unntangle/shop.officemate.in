@@ -12,41 +12,35 @@ import { CatalogCard } from "@/components/products/CatalogCard";
 import { CATALOG } from "@/lib/catalog";
 import { HOME_FAQS } from "@/constants/site";
 import { waChatHref } from "@/lib/whatsapp";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
+import type { ShopOrder } from "@/lib/shopify/customer-storefront";
 
 /**
  * Account dashboard — sidebar of account surfaces, orders panel on the right.
  *
- * ⚠ THERE ARE NO ORDERS, AND THAT IS NOT A BUG. Nothing is persisted server
- * side; checkout is simulated and clears the cart without recording anything.
- * The panel says "No orders yet" because that is true for everyone, always,
- * until an order API exists.
+ * ORDERS ARE REAL NOW. They come from the signed-in customer's Shopify record
+ * through `fetchOrders`, so this panel reflects what the admin sees.
  *
- * It is built this way rather than hidden so the shape is ready: drop a real
- * fetch into `orders` and the empty state, the search field and the layout all
- * already work. What must NOT happen is seeding it with sample orders to make
- * the screenshot look better — a fake order in someone's account is a support
+ * ⚠ IT WILL STILL BE EMPTY UNTIL CHECKOUT CREATES ORDERS. The cart is a
+ * Shopify cart, but the checkout page does not yet hand off to
+ * `cart.checkoutUrl`, so no order is ever placed. "No orders yet" is now a
+ * true statement about Shopify rather than a permanent placeholder — but it
+ * will stay true for everyone until that redirect exists.
+ *
+ * What must NOT happen is seeding this with sample orders to make a
+ * screenshot look better. A fake order in someone's account is a support
  * ticket, not a placeholder.
- *
- * Saved addresses is the same story and worth more caution: it is linked
- * because the flow needs the entry point, but the page does not exist yet.
- * Do not build it against this auth \u2014 an address is real personal data, and
- * a localStorage flag is not a credential. See AuthProvider.
  *
  * WHAT IS DELIBERATELY MISSING, having looked at the Wakefit reference:
  *
- *   Wallet, Referral and Rewards. Those are three separate products, not three
- *   nav links — each needs a ledger, a rules engine and a payout path. Adding
- *   the links now creates three dead ends inside the one area of the site
- *   where a customer expects everything to work, and "coming soon" on a wallet
- *   reads as "they are holding my money somewhere I cannot see".
+ *   Wallet, Referral and Rewards. Those are three separate products, not
+ *   three nav links — each needs a ledger, a rules engine and a payout path.
+ *   Adding the links now creates three dead ends inside the one area of the
+ *   site where a customer expects everything to work, and "coming soon" on a
+ *   wallet reads as "they are holding my money somewhere I cannot see".
  *
  *   The promo banner. It needs a real campaign, and this is the screen someone
  *   opens to check an order, not to be sold to.
- *
- * WHAT WAS WORTH TAKING: the status filter, the FAQ block and the product
- * rail. All three are backed by data that already exists, and all three make
- * an empty account useful rather than just empty.
  */
 
 /**
@@ -63,6 +57,28 @@ import { cn } from "@/lib/utils";
  */
 const ORDER_FILTERS = ["All", "Active", "Delivered", "Cancelled"] as const;
 type OrderFilter = (typeof ORDER_FILTERS)[number];
+
+/**
+ * Collapse Shopify's two status fields into one word.
+ *
+ * Shopify tracks payment and fulfilment SEPARATELY — an order can be paid and
+ * unfulfilled, or fulfilled and refunded. A customer does not think that way;
+ * they want one answer to "where is my order".
+ *
+ * Refund and cancellation are checked FIRST and win over fulfilment, because
+ * a refunded order that was also shipped is, from the customer's side,
+ * cancelled. Reading fulfilment first would label it "Delivered" and produce
+ * the worst possible support call.
+ */
+function statusOf(order: ShopOrder): Exclude<OrderFilter, "All"> {
+  const financial = (order.financialStatus ?? "").toUpperCase();
+  if (["REFUNDED", "VOIDED", "PARTIALLY_REFUNDED"].includes(financial)) {
+    return "Cancelled";
+  }
+  return (order.fulfillmentStatus ?? "").toUpperCase() === "FULFILLED"
+    ? "Delivered"
+    : "Active";
+}
 
 /**
  * Account navigation lives in components/account/AccountSidebar.tsx, shared
@@ -101,8 +117,7 @@ const topSellers = [
 
 export default function AccountPage() {
   const router = useRouter();
-  const { profile, signedIn, profileComplete, ready } = useAuth();
-  const [query, setQuery] = useState("");
+  const { signedIn, profileComplete, ready } = useAuth();
   const [filter, setFilter] = useState<OrderFilter>("All");
 
   /* Redirect in an effect, never during render. Someone signed in but part-way
@@ -124,6 +139,10 @@ export default function AccountPage() {
       </div>
     );
   }
+
+  /* No order list to filter yet — see the header. The filter chips still
+     change the empty-state wording, which keeps them honest rather than
+     decorative: "No cancelled orders" is a real answer to a real question. */
 
   return (
     <div className="bg-surface py-8 md:py-10">
@@ -151,14 +170,12 @@ export default function AccountPage() {
                 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
               />
               <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search your orders"
                 aria-label="Search your orders"
-                /* Disabled, not hidden. The field is the shape this panel will
-                   have; leaving it enabled over an empty list would let someone
-                   type and get nothing back, which reads as broken search
-                   rather than as an empty account. */
+                /* Disabled, not hidden. The field is the shape this panel
+                   will have once orders arrive; leaving it enabled over an
+                   empty list lets someone type and get nothing back, which
+                   reads as broken search rather than as an empty account. */
                 disabled
                 className="h-12 w-full rounded-xl border-2 border-line bg-surface pl-10 pr-4 text-sm text-ink outline-none transition-colors placeholder:text-muted disabled:cursor-not-allowed"
               />
@@ -190,7 +207,9 @@ export default function AccountPage() {
                 <Package size={26} className="text-muted" />
               </span>
               <p className="mt-4 text-[0.95rem] font-semibold text-ink">
-                {filter === "All" ? "No orders yet" : `No ${filter.toLowerCase()} orders`}
+                {filter === "All"
+                  ? "No orders yet"
+                  : `No ${filter.toLowerCase()} orders`}
               </p>
               <p className="mt-1 max-w-xs text-[0.82rem] leading-relaxed text-muted">
                 Once you place an order it will show up here, with tracking and

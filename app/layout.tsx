@@ -10,7 +10,9 @@ import { BackToTop } from "@/components/common/BackToTop";
 import { FloatingDock } from "@/components/common/FloatingDock";
 import { AuthProvider } from "@/components/common/AuthProvider";
 import { CartProvider } from "@/components/commerce/CartProvider";
+import { CatalogProvider } from "@/components/commerce/CatalogProvider";
 import { CartDrawer } from "@/components/commerce/CartDrawer";
+import { getCatalog } from "@/lib/catalog.server";
 
 
 
@@ -96,11 +98,21 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  /* Loaded once per request, on the server, and shared by every client
+     component that needs it through CatalogProvider below. The header, the
+     search panel and the listing grid all read the same array rather than
+     each fetching their own copy — which will matter when this is a
+     Storefront API round trip rather than a local map.
+
+     This is also what makes RootLayout async. That is fine for a server
+     component and changes nothing about how pages render. */
+  const catalog = await getCatalog();
+
   const orgJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -124,27 +136,38 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
-        {/* CartProvider wraps EnquiryProvider rather than the reverse: the
-            enquiry modal can be opened from inside a cart surface (bulk order
-            prompts on the cart page), but nothing in the cart is reachable from
-            the enquiry modal, so the cart is the outer of the two.
+        {/* CatalogProvider is OUTERMOST because CartProvider now reads the
+            catalogue: it resolves a saved localStorage line (slug + colour)
+            to a Shopify variant ID when migrating a pre-Shopify basket, and
+            it looks up the colour swatch and category for each cart line,
+            neither of which Shopify's cart returns.
+
+            The order used to be Cart → Catalog, which would throw
+            "useCatalog must be used inside <CatalogProvider>" the moment the
+            cart called it. The catalogue is inert server data with no
+            dependencies of its own, so it can safely sit at the top.
+
+            CartProvider then wraps EnquiryProvider rather than the reverse:
+            the enquiry modal can be opened from inside a cart surface (bulk
+            order prompts on the cart page), but nothing in the cart is
+            reachable from the enquiry modal.
 
             AuthProvider sits inside CartProvider because the wishlist heart
-            needs both — it reads cart state and opens the sign-in modal. It
-            wraps everything below it because that modal has to be reachable
-            from the header AND from a product card deep in a grid. */}
-        <CartProvider>
-          <AuthProvider>
-            <EnquiryProvider>
-              <Navbar />
-              <main id="main">{children}</main>
-              <Footer />
-              <BackToTop />
-              <FloatingDock />
-              <CartDrawer />
-            </EnquiryProvider>
-          </AuthProvider>
-        </CartProvider>
+            needs both — it reads cart state and opens the sign-in modal. */}
+        <CatalogProvider items={catalog}>
+          <CartProvider>
+            <AuthProvider>
+              <EnquiryProvider>
+                <Navbar />
+                <main id="main">{children}</main>
+                <Footer />
+                <BackToTop />
+                <FloatingDock />
+                <CartDrawer />
+              </EnquiryProvider>
+            </AuthProvider>
+          </CartProvider>
+        </CatalogProvider>
       </body>
     </html>
   );

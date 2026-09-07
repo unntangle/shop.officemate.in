@@ -6,7 +6,6 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
 import type { ShopItem } from "@/lib/catalog";
-import { galleryFor } from "@/constants/products";
 import { ProductRender } from "@/components/common/ProductRender";
 import { AddToCartButton } from "@/components/commerce/AddToCartButton";
 import { WishlistButton } from "@/components/commerce/WishlistButton";
@@ -49,12 +48,18 @@ export function CatalogCard({ item }: { item: ShopItem }) {
 
   /* Capped at four. The Zenpro gallery runs to ten shots including the
      annotated feature panels, and preloading all of them for a card in a rail
-     costs far more than the hover effect is worth. */
+     costs far more than the hover effect is worth.
+
+     READ FROM THE ITEM, NOT LOOKED UP BY SLUG. This called
+     `galleryFor(item.slug)`, which reads constants/products.ts directly — so
+     a product whose photography had already moved to Shopify still rendered
+     its old local shots. The lookup succeeded, so nothing appeared broken;
+     the card simply showed the wrong chair. */
   const shots = useMemo(() => {
-    const gallery = galleryFor(item.slug);
+    const gallery = item.images ?? [];
     const list = gallery.length > 0 ? gallery : item.image ? [item.image] : [];
     return list.slice(0, 4);
-  }, [item.slug, item.image]);
+  }, [item.images, item.image]);
 
   /* Two chips maximum — a third wraps and pushes the price down. Falls back to
      the series name so a quote-only model, which has no `product` record and

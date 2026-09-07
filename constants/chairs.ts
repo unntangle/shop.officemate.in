@@ -1,11 +1,28 @@
 import type { CategorySlug } from "@/types";
 
 /**
- * The real Officemate chair catalogue.
+ * ⚠ THE 45 MOCK CHAIR MODELS THAT LIVED HERE HAVE BEEN REMOVED.
  *
- * Source: officemate.in/category.php?id=office-chairs (44 models), plus Zenpro.
- * Names and series are taken verbatim from the live site — please keep them
- * that way, and add `image` as photography becomes available.
+ * They were names and series scraped from officemate.in with no price, no
+ * photography, no specs and no detail page — placeholders standing in for a
+ * catalogue that had not been entered yet. `lib/catalog.ts` invented a price
+ * band for each one so the storefront had something to render, which is a
+ * reasonable thing to do for a demo and an unreasonable thing to ship.
+ *
+ * The real catalogue is now the five records in `constants/products.ts`, and
+ * the rest is being built in Shopify.
+ *
+ * NOTHING WAS LOST WITH THEM. The category and series taxonomy those models
+ * carried already lived — properly — in `constants/categories.ts`, on
+ * `Category.subcategories`. That is now the single source for the series
+ * shown in the header mega-menu, the circle rail on the listing page and the
+ * filter drawer, so all nineteen series still appear even though only a
+ * handful currently contain stock.
+ *
+ * THIS FILE IS KEPT ONLY FOR THE `ChairModel` TYPE, which
+ * `components/products/ModelCard.tsx` still imports. Once that component is
+ * confirmed unused, delete both. Do not repopulate the array — new products
+ * belong in Shopify, and `lib/catalog.ts` is where they are read from.
  */
 export interface ChairModel {
   name: string;
@@ -15,64 +32,8 @@ export interface ChairModel {
   image?: string;
 }
 
-export const CHAIR_MODELS: ChairModel[] = [
-  // ---- Executive Series ----
-  { name: "Zenpro", slug: "zenpro", category: "office-chairs", subcategory: "Executive Series", image: "/images/products/chairs/zenpro.webp" },
-  { name: "Ergohuman", slug: "ergohuman", category: "office-chairs", subcategory: "Executive Series" },
-  { name: "Basel", slug: "basel", category: "office-chairs", subcategory: "Executive Series" },
-  { name: "Desire", slug: "desire", category: "office-chairs", subcategory: "Executive Series" },
-  { name: "Ergonmesh", slug: "ergonmesh", category: "office-chairs", subcategory: "Executive Series" },
-  { name: "Prestige", slug: "prestige", category: "office-chairs", subcategory: "Executive Series" },
-  { name: "Winner", slug: "winner", category: "office-chairs", subcategory: "Executive Series" },
-  { name: "Cross", slug: "cross", category: "office-chairs", subcategory: "Executive Series" },
-  { name: "Norway", slug: "norway", category: "office-chairs", subcategory: "Executive Series" },
-  { name: "Acosta", slug: "acosta", category: "office-chairs", subcategory: "Executive Series" },
-
-  // ---- Leather Series ----
-  { name: "Benteley", slug: "benteley", category: "office-chairs", subcategory: "Leather Series" },
-  { name: "Calvin", slug: "calvin", category: "office-chairs", subcategory: "Leather Series" },
-
-  // ---- Leatherette Series ----
-  { name: "Stanley", slug: "stanley", category: "office-chairs", subcategory: "Leatherette Series" },
-  { name: "Oyster", slug: "oyster", category: "office-chairs", subcategory: "Leatherette Series" },
-  { name: "Epson", slug: "epson", category: "office-chairs", subcategory: "Leatherette Series" },
-  { name: "Daisy", slug: "daisy", category: "office-chairs", subcategory: "Leatherette Series" },
-  { name: "Venus", slug: "venus", category: "office-chairs", subcategory: "Leatherette Series" },
-  { name: "Boss", slug: "boss", category: "office-chairs", subcategory: "Leatherette Series" },
-  { name: "V Flexi", slug: "v-flexi", category: "office-chairs", subcategory: "Leatherette Series" },
-
-  // ---- Task Series ----
-  { name: "Divine", slug: "divine", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Libra", slug: "libra", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Smart", slug: "smart", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Bravo", slug: "bravo", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Reflex", slug: "reflex", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Dynamic", slug: "dynamic", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Webstar", slug: "webstar", category: "office-chairs", subcategory: "Task Series", image: "/images/products/chairs/webstar.webp" },
-  { name: "Sitwell", slug: "sitwell", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Bence", slug: "bence", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Leo", slug: "leo", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Colt", slug: "colt", category: "office-chairs", subcategory: "Task Series" },
-  { name: "Jupiter", slug: "jupiter", category: "office-chairs", subcategory: "Task Series", image: "/images/products/chairs/Jupiter.webp" },
-
-  // ---- Training Series ----
-  { name: "Oslo", slug: "oslo", category: "office-chairs", subcategory: "Training Series" },
-  { name: "Ocean", slug: "ocean", category: "office-chairs", subcategory: "Training Series" },
-  { name: "Flip", slug: "flip", category: "office-chairs", subcategory: "Training Series" },
-  { name: "@Sense", slug: "at-sense", category: "office-chairs", subcategory: "Training Series" },
-
-  // ---- Cafe Chairs Series ----
-  { name: "Miami", slug: "miami", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Kitkat", slug: "kitkat", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Sweden", slug: "sweden", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Bliss", slug: "bliss", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Charlie", slug: "charlie", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Fire", slug: "fire", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Madrid", slug: "madrid", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Swiss", slug: "swiss", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Switch", slug: "switch", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-  { name: "Winnie", slug: "winnie", category: "office-chairs", subcategory: "Cafe Chairs Series" },
-];
+/** Intentionally empty. See the note above. */
+export const CHAIR_MODELS: ChairModel[] = [];
 
 /** Models within a subcategory, e.g. modelsIn("Task Series"). */
 export const modelsIn = (subcategory: string) =>

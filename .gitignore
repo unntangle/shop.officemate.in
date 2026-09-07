@@ -5,6 +5,15 @@
 .DS_Store
 *.pem
 npm-debug.log*
+# Secrets. `.env*.local` covers .env.local and .env.production.local;
+# the bare `.env` and `.env.*` lines matter just as much, because a token
+# pasted into `.env` would otherwise be committed. `.env.example` is the one
+# deliberate exception — it holds key NAMES only, never values.
+.env
+.env.*
+!.env.example
 .env*.local
 /.vercel
 next-env.d.ts
+
+certificates

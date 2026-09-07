@@ -6,9 +6,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useReducedMotion } from "framer-motion";
 import { Search, X } from "lucide-react";
-import { PRODUCTS, PRODUCT_IMAGES } from "@/constants/products";
 import { CATEGORIES, categoryName } from "@/constants/categories";
 import { CATEGORY_IMAGES } from "@/constants/home";
+import { useCatalog } from "@/components/commerce/CatalogProvider";
 import { formatINR } from "@/lib/commerce";
 import { cn } from "@/lib/utils";
 
@@ -94,6 +94,11 @@ export function SearchBar({
 }) {
   const router = useRouter();
   const reduce = useReducedMotion();
+  /* From the provider, not a module import — see CatalogProvider. Searching
+     over the CATALOGUE rather than over `PRODUCTS` also means the panel
+     matches whatever the storefront is actually selling, including the
+     series, which `PRODUCTS` alone does not carry. */
+  const catalog = useCatalog();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -125,12 +130,20 @@ export function SearchBar({
     const q = query.trim().toLowerCase();
     if (q.length < 2) return { products: [], categories: [] };
 
-    const products = PRODUCTS.filter((p) =>
-      [p.name, p.tagline, categoryName(p.category), ...p.badges]
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
-    ).slice(0, 5);
+    const products = catalog
+      .filter((i) =>
+        [
+          i.name,
+          i.subcategory,
+          categoryName(i.category),
+          i.product?.tagline ?? "",
+          ...(i.product?.badges ?? []),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(q)
+      )
+      .slice(0, 5);
 
     const categories = CATEGORIES.filter((c) =>
       `${c.name} ${c.tagline} ${(c.subcategories ?? []).join(" ")}`
@@ -139,7 +152,7 @@ export function SearchBar({
     ).slice(0, 3);
 
     return { products, categories };
-  }, [query]);
+  }, [query, catalog]);
 
   const hasResults = results.products.length > 0 || results.categories.length > 0;
 
@@ -392,9 +405,9 @@ export function SearchBar({
                     className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface"
                   >
                     <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-surface">
-                      {PRODUCT_IMAGES[p.slug] && (
+                      {p.image && (
                         <Image
-                          src={PRODUCT_IMAGES[p.slug]}
+                          src={p.image}
                           alt=""
                           fill
                           sizes="44px"
@@ -411,7 +424,8 @@ export function SearchBar({
                       </span>
                     </span>
                     <span className="shrink-0 text-[0.82rem] font-bold text-ink">
-                      {formatINR(p.price)}
+                      {/* Never print an invented number — see ShopItem. */}
+                      {p.pricingIsEstimated ? "On request" : formatINR(p.price)}
                     </span>
                   </Link>
                 ))}

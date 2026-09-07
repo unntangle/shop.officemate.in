@@ -23,7 +23,7 @@ import {
   categoriesIn,
 } from "@/constants/categories";
 import { CATEGORY_IMAGES } from "@/constants/home";
-import { CATALOG } from "@/lib/catalog";
+import { useCatalog } from "@/components/commerce/CatalogProvider";
 import { formatINR } from "@/lib/commerce";
 import { useCart } from "@/components/commerce/CartProvider";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
@@ -112,6 +112,10 @@ const menuGridClip = "overflow-hidden";
 
 export function Navbar() {
   const pathname = usePathname();
+  /* From the provider, not a module import — see CatalogProvider. This is
+     what lets the catalogue become an async Shopify fetch without touching
+     this file. */
+  const catalog = useCatalog();
   const { totals, ready, openDrawer, wishlist } = useCart();
   const { signedIn, ready: authReady, openLogin } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -179,14 +183,15 @@ export function Navbar() {
   const previewItems = useMemo(
     () =>
       previewSlug
-        ? CATALOG.filter((i) => i.category === previewSlug && i.image)
+        ? catalog
+            .filter((i) => i.category === previewSlug && i.image)
             .sort(
               (a, b) =>
                 Number(a.pricingIsEstimated) - Number(b.pricingIsEstimated)
             )
             .slice(0, 5)
         : [],
-    [previewSlug]
+    [previewSlug, catalog]
   );
 
   /* Close the mobile sheet on navigation. Leaving it open across a route

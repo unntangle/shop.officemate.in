@@ -9,97 +9,53 @@ import { cn } from "@/lib/utils";
 import { EASE } from "@/lib/motion";
 
 /**
- * Sign-in modal — mobile number or email, then a six-digit code.
+ * Sign-in modal — mobile number, then a six-digit code.
  *
- * ⚠⚠ SHIPPING AS A STAND-IN. READ THIS BEFORE CHANGING ANYTHING. ⚠⚠
+ * ─────────────────────────────────────────────────────────────────────────
+ * THIS IS REAL AUTHENTICATION NOW. It was a stand-in for a long time; it no
+ * longer is, and the difference matters if you are about to change it.
  *
- * This runs in production, deliberately, until a real OTP service is wired
- * up. It is NOT authentication, and the copy on screen says so rather than
- * pretending otherwise.
+ * The code is generated on the SERVER, stored only as a hash with a five
+ * minute TTL, and verified by POST /api/auth/otp/verify — which issues a
+ * signed httpOnly session cookie and links the number to a Shopify customer.
+ * The browser never learns the code except in the development case described
+ * below.
  *
- * The code is generated in the browser and shown to the person. That proves
- * nothing — the whole security model of a one-time password is that it
- * travels over a second channel the attacker does not control, and here there
- * is no second channel. Verifying also creates no session, because nothing is
- * signed and nothing is stored.
+ * WHAT THAT SESSION UNLOCKS: a Shopify customer record — order history,
+ * saved addresses, phone, email. Anyone who can obtain a code can read a
+ * stranger's home address. Treat every change here as a change to a security
+ * boundary, not to a form.
  *
- * WHY THAT IS TOLERABLE FOR NOW, and the exact moment it stops being:
- *
- *   Right now this flow guards nothing. There are no accounts, no order
- *   history, no saved addresses — so a bypass gets an attacker exactly what a
- *   stranger already has. The number or email lives in React state and never
- *   leaves the browser, so there is no personal data at rest either.
- *
- *   THE MOMENT ANYTHING SITS BEHIND THIS — order history, a saved address, a
- *   B2B price list, anything — it becomes an open door and must be replaced
- *   FIRST, not alongside. Do not let a feature ship that assumes this modal
- *   means the person is who they say they are.
- *
- * WHAT REPLACING IT INVOLVES, so it is not underestimated:
- *
- *   1. `POST /api/auth/request-otp` — server generates the code, stores a
- *      hash of it with a short TTL, sends the WhatsApp message. It must
- *      return NOTHING about the code.
- *   2. `POST /api/auth/verify-otp` — server compares, and on success issues an
- *      httpOnly, Secure, SameSite session cookie.
- *   3. Rate limiting on both, per identifier AND per IP. Without it this is a
- *      free message pump that bills the client for every request an attacker
- *      makes.
- *   4. An attempt cap — five tries, then the code is burned. Six digits is a
- *      million combinations, which is minutes of brute force without one.
- *   5. A verified Meta business, a dedicated sender number NOT already on
- *      WhatsApp, and an approved Authentication-category template. Until the
- *      business is verified the account sits at Tier 0 and cannot send
- *      authentication templates at all.
+ * The server enforces what matters, and it must stay that way: rate limits
+ * per number and per IP, a five-attempt cap, constant-time comparison. This
+ * component validates only to give fast feedback — it is not a control, and
+ * nothing here should ever be the only thing standing between a request and
+ * a session.
+ * ─────────────────────────────────────────────────────────────────────────
  *
  * CHANNEL: WHATSAPP ONLY, DELIBERATELY.
  *
  * SMS is not wired up and is not the next step. Transactional SMS in India
  * needs DLT registration with TRAI — a Principal Entity, a registered header
- * and an approved template, all three before the first message delivers — and
- * that is being done later. WhatsApp requires none of it, which is the whole
- * reason it goes first.
+ * and an approved template, all three before the first message delivers.
+ * WhatsApp requires none of it, which is why it goes first.
  *
- * ⚠ THE COST OF THAT CHOICE, IN ONE LINE: anyone whose number is not on
- * WhatsApp cannot sign in. Dual-SIM users whose WhatsApp lives on the other
- * number, people who uninstalled it, and landlines — which matters here,
- * because this storefront courts dealers and procurement teams who give a
- * desk number. Reckon on one in ten to one in twenty attempts.
- *
- * That is acceptable ONLY while the account area protects nothing: the orders
- * panel is permanently empty, checkout persists nothing, and the wishlist is
- * this browser's localStorage either way. The people it strands lose the
- * ability to save a wishlist, not an order.
+ * ⚠ THE COST: anyone whose number is not on WhatsApp cannot sign in.
+ * Dual-SIM users whose WhatsApp lives on the other number, people who
+ * uninstalled it, and landlines — which matters here, because this
+ * storefront courts dealers and procurement teams who give a desk number.
+ * Reckon on one in ten to one in twenty attempts.
  *
  * WHEN COVERAGE BECOMES THE PROBLEM, REACH FOR EMAIL BEFORE DLT. It needs no
- * telecom registration at all, and app/account/setup/page.tsx already runs an
- * email code screen with the same six-box input — so the second channel is
- * mostly wiring, not design.
+ * telecom registration, and app/account/setup/page.tsx already runs an email
+ * code screen with the same six-box input.
  *
  * NO GOOGLE OR EMAIL BUTTON, despite the reference having both. OAuth needs a
  * real provider, a client ID, a redirect URI and a session to put the result
- * in — none of which exist. A social button that opens nothing is worse than
- * no button: it is the control a shopper most expects to work, and a dead one
- * teaches them the site is broken. Add them with the auth backend.
- *
- * Email was built and then removed on request. Mobile is the right single
- * channel for an Indian storefront anyway — it is the identifier customers
- * already give for delivery, and it is the one a WhatsApp OTP needs.
+ * in. A social button that opens nothing is worse than no button: it is the
+ * control a shopper most expects to work, and a dead one teaches them the
+ * site is broken.
  */
-
-/**
- * Whether to generate and show the code in the browser.
- *
- * TRUE  — the stand-in. Code shown on screen, nothing sent, no session.
- * FALSE — the flow stops at the identifier and points the person at WhatsApp
- *         chat instead. Use this the moment the real endpoints exist but are
- *         not yet wired, so the flow is never half-real.
- *
- * A constant rather than an env var, on purpose. An env var makes it possible
- * for staging and production to disagree about whether authentication is
- * real, which is the worst of both worlds.
- */
-const DEMO_OTP = true;
 
 /** Indian mobile numbers are ten digits and start 6-9. */
 const PHONE_RE = /^[6-9]\d{9}$/;
@@ -112,7 +68,20 @@ const PHONE_RE = /^[6-9]\d{9}$/;
 const WHATSAPP_GREEN = "#25D366";
 
 const OTP_LENGTH = 6;
-const RESEND_SECONDS = 30;
+
+/**
+ * Resend cooldown, in seconds.
+ *
+ * MUST NOT BE SHORTER THAN THE SERVER'S. lib/otp/service.ts enforces a 60
+ * second cooldown and returns a 429 before that; a 30 second timer here
+ * re-enabled the button while the server was still refusing, so the shopper
+ * pressed Resend and got "please wait a moment" from a control that had just
+ * told them it was ready.
+ *
+ * The server is the authority — this only decides when the button lights up,
+ * and it should light up no earlier.
+ */
+const RESEND_SECONDS = 60;
 
 type Step = "identify" | "otp" | "unavailable";
 
@@ -146,9 +115,20 @@ export function LoginModal({
    */
   const [waOptIn, setWaOptIn] = useState(true);
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
-  const [sentCode, setSentCode] = useState<string | null>(null);
+  /**
+   * The code, when the server chose to reveal it.
+   *
+   * Populated only from the API's `devCode`, which appears solely while
+   * WhatsApp is unconfigured AND either this is localhost or the number is in
+   * OTP_DEV_PHONES. It is never computed here — the browser has no idea what
+   * the real code is otherwise, which is the entire point.
+   */
+  const [devCode, setDevCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
+  /* Requests are in flight now, so both buttons need a pending state.
+     Without it a double-tap fires two sends and burns the resend cooldown. */
+  const [busy, setBusy] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -164,15 +144,37 @@ export function LoginModal({
     setPhone("");
     setWaOptIn(true);
     setDigits(Array(OTP_LENGTH).fill(""));
-    setSentCode(null);
+    setDevCode(null);
     setError(null);
     setResendIn(0);
+    setBusy(false);
   }, []);
 
   const close = useCallback(() => {
     onClose();
-    window.setTimeout(reset, 250);
-  }, [onClose, reset]);
+  }, [onClose]);
+
+  /**
+   * Reset whenever the modal CLOSES, however it closed.
+   *
+   * This used to hang off `close()`, which only runs when the person dismisses
+   * the modal themselves. A SUCCESSFUL sign-in closes it a different way —
+   * AuthProvider sets `open` to false directly after `onVerified` — so that
+   * path never reset anything. Sign out, reopen, and you were looking at the
+   * previous session's code screen with its old digits still in the boxes.
+   *
+   * Watching `open` catches every route out: dismissed, verified, or closed
+   * by a parent for any reason at all.
+   *
+   * The delay lets the exit animation finish first. Clearing immediately
+   * blanks the panel mid-fade, which reads as the modal breaking rather than
+   * closing.
+   */
+  useEffect(() => {
+    if (open) return;
+    const t = window.setTimeout(reset, 250);
+    return () => window.clearTimeout(t);
+  }, [open, reset]);
 
   useEffect(() => {
     if (!open) return;
@@ -205,7 +207,14 @@ export function LoginModal({
     return () => window.clearTimeout(t);
   }, [resendIn]);
 
-  const sendCode = () => {
+  /**
+   * Ask the server for a code.
+   *
+   * The validation below is CONVENIENCE, not enforcement — it saves a round
+   * trip on an obviously bad number. The endpoint re-checks everything,
+   * because anything in this file can be bypassed with devtools.
+   */
+  const sendCode = async () => {
     if (!PHONE_RE.test(phone)) {
       setError("Enter a valid 10-digit mobile number.");
       return;
@@ -219,21 +228,35 @@ export function LoginModal({
       );
       return;
     }
+
     setError(null);
+    setBusy(true);
 
-    /* With DEMO_OTP off there is nothing to send to, so the flow stops here
-       rather than advancing to a code screen that could never succeed. Half a
-       working flow is worse than none. Replace this branch with the real
-       request-otp call. */
-    if (!DEMO_OTP) {
-      setStep("unavailable");
-      return;
+    try {
+      const res = await fetch("/api/auth/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, waOptIn }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        /* The server's message is shown verbatim. It is written for a customer
+           and is deliberately vague about rate limits — naming which limit was
+           hit tells an attacker how to pace around it. */
+        setError(data.error ?? "We couldn't send the code. Please try again.");
+        return;
+      }
+
+      setDevCode(data.devCode ?? null);
+      setDigits(Array(OTP_LENGTH).fill(""));
+      setResendIn(RESEND_SECONDS);
+      setStep("otp");
+    } catch {
+      setError("Couldn't reach the server. Check your connection.");
+    } finally {
+      setBusy(false);
     }
-
-    setSentCode(String(Math.floor(100000 + Math.random() * 900000)));
-    setDigits(Array(OTP_LENGTH).fill(""));
-    setResendIn(RESEND_SECONDS);
-    setStep("otp");
   };
 
   const setDigit = (i: number, value: string) => {
@@ -263,30 +286,87 @@ export function LoginModal({
     if (e.key === "ArrowRight" && i < OTP_LENGTH - 1) otpRefs.current[i + 1]?.focus();
   };
 
-  const verify = () => {
+  /**
+   * Submit the code.
+   *
+   * NO LOCAL COMPARISON. The browser does not hold the code to compare
+   * against, and must not — a client-side check would be trivially bypassed
+   * and would defeat the server's attempt cap entirely. The server decides.
+   */
+  const verify = async () => {
     const entered = digits.join("");
     if (entered.length < OTP_LENGTH) {
       setError("Enter all six digits.");
       return;
     }
-    if (entered !== sentCode) {
-      setError("That code doesn't match. Try again.");
-      setDigits(Array(OTP_LENGTH).fill(""));
-      otpRefs.current[0]?.focus();
+
+    setError(null);
+    setBusy(true);
+
+    try {
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, code: entered }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "That code doesn't match. Try again.");
+        setDigits(Array(OTP_LENGTH).fill(""));
+        otpRefs.current[0]?.focus();
+        return;
+      }
+
+      /* No success screen. The session cookie is already set; AuthProvider
+         takes over, closing this and navigating — to setup on a first sign-in,
+         to the dashboard on a return visit.
+
+         There used to be a "You're verified" step. It was a dead end: the
+         person had done the work and the reward was a panel telling them so.
+         The account area IS the confirmation. */
+      onVerified?.(phone);
+    } catch {
+      setError("Couldn't reach the server. Check your connection.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const autoSubmitted = useRef<string | null>(null);
+
+  /**
+   * Submit automatically once all six digits are in.
+   *
+   * The Verify button stays — it is the affordance people look for, and
+   * removing it would leave the screen with no visible action — but nobody
+   * should have to press it. The code is fixed-length, so the moment the last
+   * digit lands there is exactly one thing the person can possibly want.
+   *
+   * This is also what makes autofill feel finished: the browser drops all six
+   * digits in at once and the flow simply continues, instead of stopping to
+   * ask for a click nobody expected to make.
+   *
+   * GUARDED AGAINST RESUBMITTING THE SAME CODE. Without the ref this effect
+   * re-fires on the next render and resubmits the identical digits, burning
+   * the server's five-attempt cap in seconds. `verify` clears the boxes on a
+   * wrong code, which resets the guard naturally; a correct one closes the
+   * modal, so it never runs twice.
+   */
+  useEffect(() => {
+    if (step !== "otp" || busy) return;
+
+    const entered = digits.join("");
+    if (entered.length !== OTP_LENGTH) {
+      autoSubmitted.current = null;
       return;
     }
 
-    /* No success screen. The modal hands off and AuthProvider takes over — it
-       closes this and navigates, to setup on a first sign-in or to the
-       dashboard on a return visit.
-
-       There used to be a "You're verified" step here. It was a dead end: the
-       person had done the work, and the reward was a panel telling them so and
-       a Done button that put them back where they started. The account area IS
-       the confirmation. */
-    setError(null);
-    onVerified?.(phone);
-  };
+    if (autoSubmitted.current === entered) return;
+    autoSubmitted.current = entered;
+    void verify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [digits, step, busy]);
 
   return (
     <AnimatePresence>
@@ -558,9 +638,10 @@ export function LoginModal({
 
                       <button
                         onClick={sendCode}
-                        className="mt-4 h-12 w-full rounded-xl bg-night text-[0.9rem] font-semibold text-white transition-colors hover:bg-night-soft active:scale-[0.99]"
+                        disabled={busy}
+                        className="mt-4 h-12 w-full rounded-xl bg-night text-[0.9rem] font-semibold text-white transition-colors hover:bg-night-soft active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
                       >
-                        Get code
+                        {busy ? "Sending…" : "Get code"}
                       </button>
 
                       <p className="mt-3 text-center text-[0.72rem] leading-relaxed text-muted">
@@ -585,22 +666,30 @@ export function LoginModal({
 
                   {step === "otp" && (
                     <>
-                      {/* The code, shown on screen because there is no SMS or
-                          email yet. Worded for a customer rather than a
-                          developer, but kept visually distinct — dashed border,
-                          tinted ground — so nobody on the team mistakes it for
-                          finished work. */}
-                      <div className="mb-5 rounded-xl border-2 border-dashed border-accent/40 bg-accent-soft p-3 text-center">
-                        <p className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-accent">
-                          Code delivery is being set up
-                        </p>
-                        <p className="mt-1 font-mono text-[1.5rem] font-bold tracking-[0.3em] text-ink">
-                          {sentCode}
-                        </p>
-                        <p className="mt-1 text-[0.7rem] text-muted">
-                          Use the code above for now.
-                        </p>
-                      </div>
+                      {/* The code panel, shown ONLY when the server sent one
+                          back in `devCode` — which happens while WhatsApp is
+                          unconfigured, for localhost or an allowlisted number.
+                          For everyone else this block is absent and the code
+                          arrives on WhatsApp, as it should.
+
+                          Kept visually distinct — dashed border, tinted ground
+                          — so nobody on the team mistakes it for finished
+                          work. It disappears on its own the day WhatsApp
+                          credentials are added; there is nothing to remember
+                          to remove. */}
+                      {devCode && (
+                        <div className="mb-5 rounded-xl border-2 border-dashed border-accent/40 bg-accent-soft p-3 text-center">
+                          <p className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-accent">
+                            Code delivery is being set up
+                          </p>
+                          <p className="mt-1 font-mono text-[1.5rem] font-bold tracking-[0.3em] text-ink">
+                            {devCode}
+                          </p>
+                          <p className="mt-1 text-[0.7rem] text-muted">
+                            Use the code above for now.
+                          </p>
+                        </div>
+                      )}
 
                       <label className="block text-[0.82rem] font-semibold text-ink">
                         Enter the 6-digit code
@@ -646,9 +735,10 @@ export function LoginModal({
 
                       <button
                         onClick={verify}
-                        className="mt-4 h-12 w-full rounded-xl bg-night text-[0.9rem] font-semibold text-white transition-colors hover:bg-night-soft active:scale-[0.99]"
+                        disabled={busy}
+                        className="mt-4 h-12 w-full rounded-xl bg-night text-[0.9rem] font-semibold text-white transition-colors hover:bg-night-soft active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
                       >
-                        Verify
+                        {busy ? "Checking…" : "Verify"}
                       </button>
 
                       <div className="mt-3 flex items-center justify-between text-[0.78rem]">
@@ -660,8 +750,8 @@ export function LoginModal({
                         </button>
                         <button
                           onClick={sendCode}
-                          disabled={resendIn > 0}
-                          className="font-semibold text-accent disabled:cursor-not-allowed disabled:text-muted"
+                          disabled={resendIn > 0 || busy}
+                          className="font-semibold text-azure disabled:cursor-not-allowed disabled:text-muted"
                         >
                           {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
                         </button>

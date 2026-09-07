@@ -10,7 +10,9 @@ import type { CategorySlug } from "@/types";
 import { CATEGORIES, categoryName } from "@/constants/categories";
 import { CATEGORY_IMAGES } from "@/constants/home";
 import { PLACEHOLDER_IMAGES, SUBCATEGORY_IMAGES } from "@/constants/products";
-import { CATALOG, seriesIn } from "@/lib/catalog";
+import { seriesIn } from "@/lib/catalog";
+import type { ShopItem } from "@/lib/catalog";
+import { useCatalog } from "@/components/commerce/CatalogProvider";
 import { cn } from "@/lib/utils";
 import { EASE } from "@/lib/motion";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
@@ -84,36 +86,34 @@ const PRICE_BANDS = [
 /**
  * Colour swatches, DERIVED FROM THE CATALOGUE rather than hardcoded.
  *
- * ⚠ AND THIS IS THE WEAKEST FILTER ON THE PAGE. Read before relying on it.
+ * The reference design shows eight fixed swatches — Black, Grey, White,
+ * Brown, Red, Orange, Yellow, Green. Nothing describes products in those
+ * terms, so the swatches are built from the colourways that genuinely exist,
+ * using each one's real name and real hex. Every swatch shown can therefore
+ * match something.
  *
- * The reference shows eight fixed swatches — Black, Grey, White, Brown, Red,
- * Orange, Yellow, Green. Nothing in this codebase carries colours in those
- * terms. Colourways exist only on the nine records in `constants/products.ts`
- * ("Black", "Grey", "Graphite", "White Oak", "Ivory" and so on); the 45 models
- * in `constants/chairs.ts` have NO colour data whatsoever.
+ * ⚠ SELECTING A COLOUR HIDES EVERY PRODUCT WITHOUT COLOUR DATA. That is
+ * unavoidable and it resolves itself as products move to Shopify, where
+ * colourways are variants and every product carries them.
  *
- * So the swatches are built from the colourways that genuinely exist, using
- * each one's real name and real hex. That keeps the filter honest — every
- * swatch shown can actually match something — but it does not fix the gap:
- * SELECTING ANY COLOUR HIDES EVERY MODEL WITHOUT COLOUR DATA, which today is
- * the large majority of the catalogue. A shopper filtering for black loses
- * chairs that are, in fact, available in black.
- *
- * THE FIX IS DATA, NOT CODE: add a `colors` array to the entries in
- * chairs.ts. This list and the filter below both pick that up with no change.
- * Until then, treat the section as provisional — or comment out the
- * `<FilterSection id="color">` block if the client would rather not ship a
- * filter that under-reports.
+ * COMPUTED PER RENDER, NOT AT MODULE SCOPE. This was a module-level IIFE
+ * reading `CATALOG` directly, which threw "CATALOG is not defined" the moment
+ * that import was removed — and would have broken regardless once the
+ * catalogue became an async fetch, because module scope is evaluated at
+ * import time, long before any data arrives. `useMemo` recomputes only when
+ * the catalogue changes, which is once per page load.
  */
-const COLOR_OPTIONS: { name: string; hex: string }[] = (() => {
-  const seen = new Map<string, string>();
-  for (const item of CATALOG) {
-    for (const colour of item.product?.colors ?? []) {
-      if (!seen.has(colour.name)) seen.set(colour.name, colour.hex);
+function useColorOptions(catalog: ShopItem[]) {
+  return useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const item of catalog) {
+      for (const colour of item.product?.colors ?? []) {
+        if (!seen.has(colour.name)) seen.set(colour.name, colour.hex);
+      }
     }
-  }
-  return Array.from(seen, ([name, hex]) => ({ name, hex }));
-})();
+    return Array.from(seen, ([name, hex]) => ({ name, hex }));
+  }, [catalog]);
+}
 
 /** Everything the drawer stages before "Apply Filters" commits it. */
 interface Draft {
@@ -164,13 +164,19 @@ interface SeriesArt {
 }
 
 function seriesImage(
+  catalog: ShopItem[],
   category: CategorySlug,
   series: string
 ): SeriesArt | undefined {
   const curated = SUBCATEGORY_IMAGES[`${category}:${series}`];
   if (curated) return { src: curated, contain: true };
 
-  const model = CATALOG.find(
+  /* The catalogue is PASSED IN rather than imported, because this is a
+     module-level function and cannot call `useCatalog`. Importing `CATALOG`
+     here would reintroduce exactly the module-scope data dependency the
+     provider exists to remove — and it would go on quietly working right up
+     until the catalogue became an async Shopify fetch. */
+  const model = catalog.find(
     (i) => i.category === category && i.subcategory === series && i.image
   )?.image;
   if (model) return { src: model, contain: true };
@@ -327,6 +333,9 @@ function ColorTile({
 export function ProductsView() {
   const router = useRouter();
   const params = useSearchParams();
+  /* From the provider, not a module import — see CatalogProvider. */
+  const catalog = useCatalog();
+  const colorOptions = useColorOptions(catalog);
 
   /* Committed filters. The URL is the source of truth for all of them, so a
      filtered view is shareable and the back button steps through it. */
@@ -473,7 +482,7 @@ export function ProductsView() {
     });
 
   const items = useMemo(() => {
-    let list = CATALOG.slice();
+    let list = catalog.slice();
 
     if (activeCategory !== "all") {
       list = list.filter((i) => i.category === activeCategory);
@@ -492,8 +501,8 @@ export function ProductsView() {
       list = list.filter((i) => i.price >= band.min && i.price < band.max);
     }
 
-    /* See the COLOR_OPTIONS warning: an item with no colour data cannot match
-       any colour, so this necessarily hides most of the catalogue today. */
+    /* See `useColorOptions`: an item with no colour data cannot match any
+       colour, so this necessarily hides part of the catalogue today. */
     if (activeColors.length > 0) {
       list = list.filter((i) =>
         (i.product?.colors ?? []).some((c) => activeColors.includes(c.name))
@@ -515,6 +524,7 @@ export function ProductsView() {
         );
     }
   }, [
+    catalog,
     activeCategory,
     activeSub,
     activeBand,
@@ -695,7 +705,7 @@ export function ProductsView() {
               const active = activeSub === series;
               const label = series ? seriesLabel(series) : "All";
               const art = series
-                ? seriesImage(activeCategory as CategorySlug, series)
+                ? seriesImage(catalog, activeCategory as CategorySlug, series)
                 : undefined;
 
               return (
@@ -1029,14 +1039,14 @@ export function ProductsView() {
                   </div>
                 </FilterSection>
 
-                {COLOR_OPTIONS.length > 0 && (
+                {colorOptions.length > 0 && (
                   <FilterSection
                     title="Color"
                     open={openSections.color}
                     onToggle={() => toggleSection("color")}
                   >
                     <div className="grid grid-cols-4 gap-2.5">
-                      {COLOR_OPTIONS.map((c) => (
+                      {colorOptions.map((c) => (
                         <ColorTile
                           key={c.name}
                           name={c.name}

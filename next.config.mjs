@@ -26,6 +26,20 @@ const nextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
+      /**
+       * Shopify's image CDN. REQUIRED, not optional — every product image
+       * from the Storefront API is served from here, and next/image refuses
+       * any host that is not listed rather than falling back to a plain
+       * <img>. Without this entry every product photo throws once the
+       * catalogue comes from Shopify.
+       *
+       * This one is permanent, unlike the Unsplash entry above.
+       */
+      {
+        protocol: "https",
+        hostname: "cdn.shopify.com",
+        pathname: "/**",
+      },
     ],
   },
   eslint: { ignoreDuringBuilds: true },

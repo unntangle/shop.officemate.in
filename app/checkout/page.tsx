@@ -1,180 +1,110 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import {
-  ArrowLeft,
-  Banknote,
-  Check,
-  CreditCard,
-  Landmark,
-  Lock,
-  Package,
-  Smartphone,
-} from "lucide-react";
+import { ArrowRight, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { useCart } from "@/components/commerce/CartProvider";
-import { OrderSummary } from "@/components/commerce/OrderSummary";
-import { ProductRender } from "@/components/common/ProductRender";
-import { deliveryEstimate, formatINR } from "@/lib/commerce";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/common/AuthProvider";
+import { setCartBuyer } from "@/lib/shopify/cart";
+import { formatPrice } from "@/lib/utils";
 
-/* -------------------------------------------------------------------------
-   PLACEHOLDER CHECKOUT
-
-   There is no backend and no payment gateway wired up. "Place order" runs a
-   simulated 1.6s delay and shows a confirmation, exactly as the old enquiry
-   form did.
-
-   Before launch this needs: server-side price recalculation (never trust the
-   client's totals), a real PSP integration, address validation against a
-   pincode serviceability API, and order persistence. The form below collects
-   the right fields for all of that, but it posts nowhere.
-
-   Note this file deliberately collects NO card details. Card capture belongs
-   inside the PSP's hosted fields or iframe, never in our own inputs — doing it
-   here would drag the whole site into PCI-DSS scope for no benefit.
-
-   COLOUR: CHARCOAL ACTIONS, RED RESERVED FOR ERRORS.
-
-   Every button and selected state here is `night`, matching the cart drawer
-   and AddToCartButton's `dark` variant. Checkout is the one page where the
-   shopper is reading carefully and where a mistake costs them money, so the
-   page should be quiet and the only red on it should mean "you need to fix
-   this".
-
-   That is the real argument for the change, beyond consistency: when the
-   Continue button, the selected payment method and the validation message
-   were all red, the error message had nothing to distinguish it. Now a red
-   field border is the only red on the page and cannot be missed.
-------------------------------------------------------------------------- */
-
-type Step = "address" | "payment" | "done";
-
-const PAYMENT_METHODS = [
-  { id: "upi", label: "UPI", detail: "GPay, PhonePe, Paytm", icon: Smartphone },
-  { id: "card", label: "Card", detail: "Credit or debit", icon: CreditCard },
-  { id: "netbanking", label: "Net banking", detail: "All major banks", icon: Landmark },
-  { id: "cod", label: "Cash on delivery", detail: "Pay on installation", icon: Banknote },
-] as const;
-
-const EMPTY_ADDRESS = {
-  name: "",
-  phone: "",
-  email: "",
-  line1: "",
-  line2: "",
-  city: "",
-  state: "",
-  pincode: "",
-};
+/**
+ * Checkout hand-off.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * THIS PAGE NO LONGER TAKES AN ADDRESS OR A PAYMENT. It hands the cart to
+ * Shopify's hosted checkout, which owns the whole transaction.
+ *
+ * What that removes, and why removing it was the point:
+ *
+ *   PCI SCOPE. No card detail ever reaches this codebase or this server.
+ *   PRICE TAMPERING. Shopify recalculates every line from its own catalogue,
+ *     so an edited cart in localStorage cannot produce a cheap order. The
+ *     previous version totalled in the browser and trusted the result.
+ *   TAX AND SHIPPING. Both computed by Shopify against the real address,
+ *     which is why this page never asked for one — a delivery estimate made
+ *     up before an address exists is a guess presented as a fact.
+ *   ORDER CREATION. Shopify records the order, emails the confirmation and
+ *     shows it in the admin. The old page cleared the cart and recorded
+ *     nothing, which meant a customer could "complete" a purchase that had
+ *     never happened.
+ *
+ * The address form, the fake order confirmation and the local coupon maths
+ * are all gone. None of them were real.
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * ⚠ A PAYMENT PROVIDER MUST BE CONNECTED IN SHOPIFY before an order can
+ * actually complete. Until then this redirect works and Shopify's checkout
+ * loads with the right items and the right customer — it simply has no way to
+ * charge. Settings → Payments.
+ */
 
 export default function CheckoutPage() {
-  const { lines, totals, ready, clearCart } = useCart();
+  const { lines, totals, checkoutUrl, ready } = useCart();
+  const { auth } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
-  const [step, setStep] = useState<Step>("address");
-  const [address, setAddress] = useState(EMPTY_ADDRESS);
-  const [method, setMethod] = useState<string>("upi");
-  const [placing, setPlacing] = useState(false);
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  /**
+   * Redirect as soon as there is a cart to redirect with.
+   *
+   * Automatic rather than behind a button. Someone who pressed "Proceed to
+   * checkout" has already declared their intent; making them press a second
+   * button on a page that only forwards them is friction with nothing behind
+   * it.
+   */
+  useEffect(() => {
+    if (!ready || redirecting) return;
+    if (lines.length === 0) return;
+    if (!checkoutUrl) return;
 
-  const validateAddress = () => {
-    const next: Record<string, string> = {};
+    setRedirecting(true);
 
-    if (address.name.trim().length < 2) next.name = "Enter your full name";
-    /* Accepts an optional +91 and exactly ten digits. Kept permissive about
-       spacing because people paste numbers formatted every possible way. */
-    if (!/^(\+?91[-\s]?)?[6-9]\d{9}$/.test(address.phone.replace(/[\s-]/g, "")))
-      next.phone = "Enter a valid 10-digit mobile number";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address.email))
-      next.email = "Enter a valid email for the invoice";
-    if (address.line1.trim().length < 4) next.line1 = "Enter the street address";
-    if (address.city.trim().length < 2) next.city = "Enter the city";
-    if (address.state.trim().length < 2) next.state = "Enter the state";
-    if (!/^\d{6}$/.test(address.pincode)) next.pincode = "Enter a 6-digit PIN code";
+    (async () => {
+      /* Attach the customer BEFORE handing over, so the order lands on their
+         existing record instead of creating a second one — see setCartBuyer.
+         Deliberately not awaited for its result: a failure here must not stop
+         the sale. */
+      if (auth?.email || auth?.phone) {
+        await setCartBuyer({ email: auth.email, phone: auth.phone }).catch(
+          () => null
+        );
+      }
 
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  };
+      /* `logged_in=true` carries the Shopify customer session across to
+         checkout. Without it a signed-in customer is asked to identify
+         themselves a second time, immediately after signing in — which is
+         exactly the friction the account work exists to remove. */
+      const url = new URL(checkoutUrl);
+      if (auth?.signedIn) url.searchParams.set("logged_in", "true");
 
-  const placeOrder = async () => {
-    setPlacing(true);
-
-    /* Simulated. See the note at the top of this file. */
-    await new Promise((r) => setTimeout(r, 1600));
-
-    const id = `OM${Date.now().toString().slice(-8)}`;
-    console.info("[checkout] simulated order", {
-      orderId: id,
-      lines,
-      totals,
-      address,
-      method,
+      /* `replace`, not `assign`. Checkout is a one-way door: pressing Back
+         from Shopify's page should return to the cart, not to this
+         intermediate screen which would immediately forward them again. */
+      window.location.replace(url.toString());
+    })().catch(() => {
+      setRedirecting(false);
+      setError("We couldn't reach checkout. Please try again.");
     });
+  }, [ready, redirecting, lines.length, checkoutUrl, auth]);
 
-    setOrderId(id);
-    setStep("done");
-    setPlacing(false);
-    clearCart();
-  };
-
-  /* ---------------------------------------------------------------- done */
-  if (step === "done" && orderId) {
+  if (!ready) {
     return (
-      <div className="container py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto max-w-md text-center"
-        >
-          <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-save-soft">
-            <Check size={34} className="text-save" />
-          </span>
-          <h1 className="mt-6 text-2xl font-bold text-ink">Order confirmed</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            Thanks — we've sent the invoice to {address.email || "your email"}.
-            Our team will call to schedule installation.
-          </p>
-
-          <div className="mt-6 rounded-2xl border border-line bg-white p-5 text-left">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted">Order number</span>
-              <span className="font-bold text-ink">{orderId}</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-muted">Estimated delivery</span>
-              <span className="font-medium text-ink">{deliveryEstimate()}</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-muted">Payment</span>
-              <span className="font-medium text-ink">
-                {PAYMENT_METHODS.find((m) => m.id === method)?.label}
-              </span>
-            </div>
-          </div>
-
-          <Link
-            href="/categories"
-            className="mt-7 inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
-          >
-            Continue shopping
-          </Link>
-        </motion.div>
+      <div className="container py-24">
+        <div className="mx-auto h-64 max-w-md animate-pulse rounded-2xl bg-surface" />
       </div>
     );
   }
 
-  /* --------------------------------------------------------------- empty */
-  if (ready && lines.length === 0) {
+  if (lines.length === 0) {
     return (
-      <div className="container py-20 text-center">
-        <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-surface">
-          <Package size={30} className="text-muted" />
-        </span>
-        <h1 className="mt-6 text-2xl font-bold text-ink">Nothing to check out</h1>
-        <p className="mt-2 text-sm text-muted">Your cart is empty.</p>
+      <div className="container flex flex-col items-center py-24 text-center">
+        <h1 className="text-[1.5rem] font-bold tracking-[-0.02em] text-ink">
+          Your cart is empty
+        </h1>
+        <p className="mt-2 max-w-sm text-[0.9rem] leading-relaxed text-muted">
+          Add something to it and checkout will be here waiting.
+        </p>
         <Link
           href="/categories"
           className="mt-6 inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
@@ -185,289 +115,75 @@ export default function CheckoutPage() {
     );
   }
 
-  const field = (
-    key: keyof typeof EMPTY_ADDRESS,
-    label: string,
-    opts: { type?: string; span?: boolean; placeholder?: string } = {}
-  ) => (
-    <div className={opts.span ? "sm:col-span-2" : undefined}>
-      <label
-        htmlFor={key}
-        className="mb-1.5 block text-[0.78rem] font-medium text-ink"
-      >
-        {label}
-      </label>
-      <input
-        id={key}
-        type={opts.type ?? "text"}
-        value={address[key]}
-        placeholder={opts.placeholder}
-        onChange={(e) => {
-          setAddress((a) => ({ ...a, [key]: e.target.value }));
-          setErrors((p) => ({ ...p, [key]: "" }));
-        }}
-        aria-invalid={Boolean(errors[key])}
-        className={cn(
-          "h-11 w-full rounded-xl border bg-white px-3.5 text-sm text-ink outline-none transition-colors placeholder:text-muted",
-          /* Red on the error state only — it is now the single red thing on
-             the page, which is what makes it read as a problem rather than as
-             more branding. */
-          errors[key] ? "border-accent" : "border-line focus:border-ink"
-        )}
-      />
-      {errors[key] && (
-        <p className="mt-1 text-[0.72rem] text-accent">{errors[key]}</p>
-      )}
-    </div>
-  );
-
   return (
-    <div className="bg-surface py-8 md:py-10">
-      <div className="container">
-        <Link
-          href="/cart"
-          className="group inline-flex items-center gap-1.5 text-[0.82rem] font-medium text-muted transition-colors hover:text-ink"
-        >
-          <ArrowLeft
-            size={15}
-            className="transition-transform duration-300 group-hover:-translate-x-0.5"
-          />
-          Back to cart
-        </Link>
-
-        <h1 className="mt-3 text-[1.6rem] font-bold tracking-[-0.02em] text-ink md:text-[2rem]">
-          Checkout
-        </h1>
-
-        {/* Step indicator */}
-        <ol className="mt-4 flex items-center gap-2 text-[0.78rem]">
-          {(["address", "payment"] as const).map((s, i) => {
-            const done = step === "payment" && s === "address";
-            const active = step === s;
-            return (
-              <li key={s} className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] font-bold",
-                    done
-                      ? "bg-save text-white"
-                      : active
-                        ? "bg-night text-white"
-                        : "bg-line text-muted"
-                  )}
-                >
-                  {done ? <Check size={13} /> : i + 1}
-                </span>
-                <span
-                  className={cn(
-                    "font-medium capitalize",
-                    active ? "text-ink" : "text-muted"
-                  )}
-                >
-                  {s}
-                </span>
-                {i === 0 && <span className="mx-1 h-px w-8 bg-line" />}
-              </li>
-            );
-          })}
-        </ol>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-          <div className="space-y-4">
-            {/* ------------------------------------------------ address */}
-            <section className="rounded-2xl border border-line bg-white p-5">
-              <h2 className="text-[0.95rem] font-bold text-ink">
-                Delivery address
-              </h2>
-
-              {step === "address" ? (
-                <>
-                  <div className="mt-4 grid gap-3.5 sm:grid-cols-2">
-                    {field("name", "Full name", { span: true })}
-                    {field("phone", "Mobile number", {
-                      type: "tel",
-                      placeholder: "9876543210",
-                    })}
-                    {field("email", "Email", {
-                      type: "email",
-                      placeholder: "you@company.com",
-                    })}
-                    {field("line1", "Address line 1", { span: true })}
-                    {field("line2", "Address line 2 (optional)", { span: true })}
-                    {field("city", "City")}
-                    {field("state", "State")}
-                    {field("pincode", "PIN code", { placeholder: "600017" })}
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      if (validateAddress()) setStep("payment");
-                    }}
-                    className="mt-5 h-12 w-full rounded-xl bg-night text-sm font-semibold text-white transition-colors hover:bg-night-deep sm:w-auto sm:px-10"
-                  >
-                    Continue to payment
-                  </button>
-                </>
-              ) : (
-                <div className="mt-3 flex items-start justify-between gap-4">
-                  <div className="text-[0.82rem] leading-relaxed text-muted">
-                    <p className="font-semibold text-ink">{address.name}</p>
-                    <p>
-                      {address.line1}
-                      {address.line2 && `, ${address.line2}`}
-                    </p>
-                    <p>
-                      {address.city}, {address.state} {address.pincode}
-                    </p>
-                    <p className="mt-1">
-                      {address.phone} · {address.email}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setStep("address")}
-                    className="shrink-0 text-[0.8rem] font-medium text-muted underline underline-offset-4 transition-colors hover:text-ink"
-                  >
-                    Change
-                  </button>
-                </div>
-              )}
-            </section>
-
-            {/* ------------------------------------------------ payment */}
-            <section
-              className={cn(
-                "rounded-2xl border bg-white p-5 transition-opacity",
-                step === "payment"
-                  ? "border-line"
-                  : "pointer-events-none border-line opacity-45"
-              )}
+    <div className="container py-16 md:py-24">
+      <div className="mx-auto max-w-md text-center">
+        {error ? (
+          <>
+            <h1 className="text-[1.4rem] font-bold tracking-[-0.02em] text-ink">
+              Something went wrong
+            </h1>
+            <p className="mt-2 text-[0.9rem] leading-relaxed text-muted">
+              {error}
+            </p>
+            <Link
+              href="/cart"
+              className="mt-6 inline-flex h-12 items-center rounded-xl bg-night px-7 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
             >
-              <h2 className="text-[0.95rem] font-bold text-ink">Payment method</h2>
+              Back to cart
+            </Link>
+          </>
+        ) : (
+          <>
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-surface">
+              <Loader2 size={24} className="animate-spin text-muted" />
+            </span>
 
-              <div className="mt-4 space-y-2">
-                {PAYMENT_METHODS.map((m) => {
-                  const Icon = m.icon;
-                  const selected = method === m.id;
-                  return (
-                    <label
-                      key={m.id}
-                      className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all",
-                        selected
-                          ? "border-ink bg-surface"
-                          : "border-line hover:border-ink/25"
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value={m.id}
-                        checked={selected}
-                        onChange={() => setMethod(m.id)}
-                        className="sr-only"
-                      />
-                      <span
-                        className={cn(
-                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                          selected ? "bg-night text-white" : "bg-surface text-muted"
-                        )}
-                      >
-                        <Icon size={16} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[0.85rem] font-semibold text-ink">
-                          {m.label}
-                        </span>
-                        <span className="block text-[0.72rem] text-muted">
-                          {m.detail}
-                        </span>
-                      </span>
-                      <span
-                        className={cn(
-                          "h-4 w-4 shrink-0 rounded-full border-2 transition-colors",
-                          selected ? "border-ink bg-ink" : "border-line"
-                        )}
-                      />
-                    </label>
-                  );
-                })}
-              </div>
+            <h1 className="mt-5 text-[1.4rem] font-bold tracking-[-0.02em] text-ink">
+              Taking you to secure checkout
+            </h1>
 
-              <p className="mt-4 flex items-center gap-1.5 text-[0.72rem] text-muted">
-                <Lock size={12} />
-                Card details are entered on our payment provider's secure page,
-                never on this site.
-              </p>
-            </section>
-          </div>
+            {/* The total is repeated here on purpose. This screen appears for
+                a second or two, and seeing the amount carried across is what
+                makes the hand-off to a different domain feel deliberate
+                rather than like being bounced somewhere unexpected. */}
+            <p className="mt-2 text-[0.9rem] leading-relaxed text-muted">
+              {totals.itemCount} {totals.itemCount === 1 ? "item" : "items"} ·{" "}
+              <span className="font-semibold text-ink">
+                {formatPrice(totals.total || totals.subtotal)}
+              </span>
+            </p>
 
-          {/* ------------------------------------------------- summary */}
-          <div className="lg:sticky lg:top-28">
-            <div className="mb-3 rounded-2xl border border-line bg-white p-4">
-              <p className="mb-3 text-[0.85rem] font-bold text-ink">
-                {totals.itemCount} {totals.itemCount === 1 ? "item" : "items"}
-              </p>
-              <ul className="space-y-2.5">
-                {lines.map((line) => (
-                  <li key={line.lineId} className="flex items-center gap-3">
-                    <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-surface">
-                      {line.image ? (
-                        <Image
-                          src={line.image}
-                          alt=""
-                          fill
-                          sizes="48px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <ProductRender
-                          category={line.category}
-                          color={line.colorHex}
-                        />
-                      )}
-                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-night px-1 text-[0.6rem] font-bold text-white">
-                        {line.qty}
-                      </span>
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="clamp-1 block text-[0.78rem] font-medium text-ink">
-                        {line.name}
-                      </span>
-                      <span className="block text-[0.7rem] text-muted">
-                        {line.color}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-[0.8rem] font-semibold text-ink">
-                      {formatINR(line.price * line.qty)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+            <div className="mt-8 space-y-2.5 text-left">
+              {[
+                { icon: Lock, text: "Payment handled entirely by Shopify" },
+                { icon: ShieldCheck, text: "We never see or store your card details" },
+                { icon: ArrowRight, text: "Delivery and taxes calculated at the next step" },
+              ].map(({ icon: Icon, text }) => (
+                <p
+                  key={text}
+                  className="flex items-center gap-2.5 text-[0.82rem] text-muted"
+                >
+                  <Icon size={15} className="shrink-0" />
+                  {text}
+                </p>
+              ))}
             </div>
 
-            <OrderSummary
-              action={
-                <button
-                  onClick={placeOrder}
-                  disabled={step !== "payment" || placing}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-night py-4 text-sm font-semibold text-white transition-colors hover:bg-night-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
-                >
-                  {placing ? (
-                    <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                      Placing order…
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={14} />
-                      Place order · {formatINR(totals.total)}
-                    </>
-                  )}
-                </button>
-              }
-            />
-          </div>
-        </div>
+            {/* A manual escape hatch. If the automatic redirect is blocked —
+                some in-app browsers and privacy extensions do block
+                programmatic navigation — this is the difference between a
+                stuck page and a completed order. */}
+            {checkoutUrl && (
+              <a
+                href={checkoutUrl}
+                className="mt-8 inline-block text-[0.82rem] font-medium text-azure underline underline-offset-4 hover:text-azure-ink"
+              >
+                Not redirected? Continue to checkout
+              </a>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

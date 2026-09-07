@@ -1,20 +1,30 @@
 import { Product } from "@/types";
 
 /**
- * Product catalogue.
+ * Product catalogue — the five real, fully-specified Officemate products.
  *
- * Real Officemate models only. Six "Aeris"-branded mock records from the
- * original showcase build (Glide Ergo, Mesh Task Pro, Flow Executive, Pulse
- * Gaming, Orbit Standing Desk, Lumbar Cushion) were removed — Aeris is an
- * invented brand and had no business appearing on a live storefront. Do not
- * reintroduce placeholder products here; `constants/chairs.ts` holds the real
- * catalogue and `lib/catalog.ts` merges the two.
+ * This is now the ONLY product source. constants/chairs.ts previously carried
+ * 45 name-and-series placeholders with no price or photography, and
+ * lib/catalog.ts invented a price band for each; both are gone. Everything
+ * here has a real price, real photography and a real detail page.
+ *
+ * Six "Aeris"-branded mock records from the original showcase build were
+ * removed earlier for the same reason — Aeris is an invented brand and had no
+ * business on a live storefront.
+ *
+ * DO NOT ADD PLACEHOLDER PRODUCTS HERE. The rest of the range is being built
+ * in Shopify; this file is what the Storefront API adapter will replace.
+ *
+ * `subcategory` must match one of `Category.subcategories` for the product's
+ * category in constants/categories.ts, or the product is reachable only under
+ * "All series".
  */
 export const PRODUCTS: Product[] = [
   {
     name: "Zenpro",
     slug: "zenpro",
     category: "office-chairs",
+    subcategory: "Executive Series",
     price: 19499,
     compareAtPrice: 25999,
     rating: 4.7,
@@ -111,6 +121,7 @@ export const PRODUCTS: Product[] = [
     name: "Jupiter",
     slug: "jupiter",
     category: "office-chairs",
+    subcategory: "Task Series",
     price: 54999,
     compareAtPrice: 64999,
     rating: 4.8,
@@ -205,6 +216,7 @@ export const PRODUCTS: Product[] = [
     name: "Webstar",
     slug: "webstar",
     category: "office-chairs",
+    subcategory: "Task Series",
     price: 67999,
     compareAtPrice: 79999,
     rating: 4.6,
@@ -298,6 +310,7 @@ export const PRODUCTS: Product[] = [
     name: "Ferro",
     slug: "ferro",
     category: "office-chairs",
+    subcategory: "Task Series",
     price: 12999,
     compareAtPrice: 16999,
     rating: 4.5,
@@ -393,6 +406,7 @@ export const PRODUCTS: Product[] = [
     name: "Altura",
     slug: "altura",
     category: "office-chairs",
+    subcategory: "Executive Series",
     price: 36999,
     compareAtPrice: 44999,
     rating: 4.9,

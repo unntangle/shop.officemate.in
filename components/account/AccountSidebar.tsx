@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, Package, Settings, User } from "lucide-react";
+import { Heart, MapPin, Package, User } from "lucide-react";
 import { useAuth } from "@/components/common/AuthProvider";
 import { useCart } from "@/components/commerce/CartProvider";
 
@@ -14,15 +14,21 @@ import { useCart } from "@/components/commerce/CartProvider";
  * that one of them was forgotten, and the active state depends on knowing the
  * full set of destinations in one place.
  *
- * Every entry goes somewhere real. Nothing is listed that does not yet exist —
- * see the note in app/account/page.tsx about Wallet and Rewards.
+ * Every entry goes somewhere real AND somewhere DIFFERENT. "My profile" used
+ * to point at /account/setup, which is the onboarding wizard and redirects
+ * away the moment the profile is complete — so for every finished account it
+ * was a link that visibly did nothing. It now goes to /account/profile, which
+ * is the page you return to rather than the one you pass through once.
  */
 
 const ACCOUNT_NAV = [
-  { href: "/account/setup", label: "My profile", icon: User },
+  { href: "/account/profile", label: "My profile", icon: User },
   { href: "/account", label: "Orders", icon: Package },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
-  { href: "/account/settings", label: "Settings", icon: Settings },
+  /* Labelled for what it holds. It was "Settings", which promised a
+     preferences page and delivered an address book — and while the profile
+     form also lived there, it overlapped "My profile" as well. */
+  { href: "/account/settings", label: "Addresses", icon: MapPin },
 ];
 
 /** Time-of-day greeting. Purely cosmetic; no locale handling needed. */
@@ -35,10 +41,12 @@ function greeting() {
 
 export function AccountSidebar() {
   const pathname = usePathname();
-  const { profile, signOut } = useAuth();
+  /* `auth` comes from the server on every check — it is not a cached copy of
+     a localStorage profile, so an edit made in Shopify admin shows here. */
+  const { auth, signOut } = useAuth();
   const { wishlist } = useCart();
 
-  const initial = (profile?.firstName ?? "").charAt(0).toUpperCase() || "?";
+  const initial = (auth?.firstName ?? "").charAt(0).toUpperCase() || "?";
 
   return (
     <aside className="space-y-4">
@@ -49,13 +57,22 @@ export function AccountSidebar() {
           {initial}
         </span>
         <div className="min-w-0">
+          {/* Falls back to "there" rather than rendering "Hi , good evening".
+              The name can legitimately be absent for a moment on first load,
+              and a greeting with a hole in it looks broken. */}
           <p className="truncate text-[0.95rem] font-semibold text-ink">
-            Hi {profile?.firstName}, {greeting()}
+            Hi {auth?.firstName ?? "there"}, {greeting()}
           </p>
           <p className="truncate text-[0.78rem] text-muted">
-            +91 {profile?.phone}
+            +91 {auth?.phone}
           </p>
-          <p className="truncate text-[0.78rem] text-muted">{profile?.email}</p>
+          {/* Only when it is a real address. A customer who has not finished
+              setup still carries the synthetic @phone.officemate.invalid
+              placeholder, and printing that would be worse than printing
+              nothing — see AuthState.profileComplete. */}
+          {auth?.email && (
+            <p className="truncate text-[0.78rem] text-muted">{auth.email}</p>
+          )}
         </div>
       </div>
 

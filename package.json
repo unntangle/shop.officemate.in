@@ -9,7 +9,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "shopify:check": "node --env-file=.env.local scripts/shopify-check.mjs",
+    "shopify:admin-check": "node --env-file=.env.local scripts/shopify-admin-check.mjs",
+    "shopify:probe-customer": "node --env-file=.env.local scripts/shopify-probe-customer.mjs",
+    "shopify:probe-update": "node --env-file=.env.local scripts/shopify-probe-update.mjs",
+    "account:delete": "node --env-file=.env.local scripts/account-delete.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
