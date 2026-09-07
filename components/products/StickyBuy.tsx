@@ -154,7 +154,20 @@ export function StickyBuy({ product }: { product: Product }) {
                 someone is closest to deciding. */}
             <div className="container flex h-16 items-center justify-between gap-6">
               <div className="flex min-w-0 items-center gap-7">
-                <span className="display shrink-0 truncate text-base font-semibold text-ink">
+                {/* Larger than the nav beside it, and the only bold thing in
+                    the row. This bar replaces the site header while it is up,
+                    so the product name is doing the job the logo does
+                    elsewhere — at the same size as the section links it read
+                    as one more of them.
+
+                    `min-w` gives it a reserved column so the section nav
+                    starts at the same x-position on every product, rather than
+                    sliding left or right with the length of the name — the
+                    links are in the same place whether you are on Reflex or on
+                    something with a four-word title. `max-w` then stops a very
+                    long name from crowding the price out; `truncate` needs a
+                    bounded width to do anything at all. */}
+                <span className="display min-w-[13rem] max-w-[24rem] shrink-0 truncate text-[1.5rem] font-bold leading-none tracking-[-0.02em] text-ink">
                   {product.name}
                 </span>
 
@@ -168,8 +181,14 @@ export function StickyBuy({ product }: { product: Product }) {
                       href={`#${s.id}`}
                       className={cn(
                         "text-sm transition-colors",
+                        /* Blue for the section you are in — the same azure
+                           that carries links and utility state everywhere
+                           else. Bold ink was doing the job but read as a
+                           second product name rather than as a position
+                           marker, and colour separates the two ideas without
+                           adding weight. */
                         active === s.id
-                          ? "font-semibold text-ink"
+                          ? "font-semibold text-azure"
                           : "text-muted hover:text-ink"
                       )}
                     >

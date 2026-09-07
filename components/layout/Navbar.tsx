@@ -625,9 +625,14 @@ export function Navbar() {
                   SIZED BY HEIGHT, AND THE NUMBERS ARE NOT THE WEBP'S. The
                   vector is 12.19:1 where logo.webp was about 8.9:1, so the
                   same `h-7` that fitted the raster renders this ~37% wider.
-                  h-6 at desktop lands near 293px, roughly what officemate.in
-                  itself uses. h-4 on mobile keeps the burger, logo and two
-                  icons inside a 375px viewport.
+                  That ratio is why the heights here look small: at h-5 the
+                  mark is still ~244px across, which is wider than most site
+                  logos and plenty to read at a glance.
+
+                  Stepped down a notch (h-6 → h-5 on desktop) because at the
+                  larger size it took roughly a fifth of the header width and
+                  crowded the nav toward the icons. h-3.5 on mobile keeps the
+                  burger, logo and two icons inside a 375px viewport.
 
                   `fetchPriority="high"` replaces next/image's `priority` —
                   this is the first thing painted on every page. */}
@@ -639,7 +644,7 @@ export function Navbar() {
                 height={61}
                 fetchPriority="high"
                 decoding="async"
-                className="h-4 w-auto object-contain sm:h-5 md:h-6"
+                className="h-3.5 w-auto object-contain sm:h-4 md:h-5"
               />
             </Link>
 
