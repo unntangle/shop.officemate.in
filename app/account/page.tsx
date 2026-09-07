@@ -117,7 +117,8 @@ const topSellers = [
 
 export default function AccountPage() {
   const router = useRouter();
-  const { signedIn, profileComplete, ready } = useAuth();
+  const { signedIn, profileComplete, ready, orders, ordersLoading } = useAuth();
+  const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<OrderFilter>("All");
 
   /* Redirect in an effect, never during render. Someone signed in but part-way
@@ -140,9 +141,17 @@ export default function AccountPage() {
     );
   }
 
-  /* No order list to filter yet — see the header. The filter chips still
-     change the empty-state wording, which keeps them honest rather than
-     decorative: "No cancelled orders" is a real answer to a real question. */
+  /* Filter then search. Searching order numbers AND line titles, because
+     people look for "the Zenpro one" far more often than for #1003. */
+  const q = query.trim().toLowerCase();
+  const visibleOrders = orders
+    .filter((o) => filter === "All" || statusOf(o) === filter)
+    .filter(
+      (o) =>
+        !q ||
+        o.name.toLowerCase().includes(q) ||
+        o.lines.some((l) => l.title.toLowerCase().includes(q))
+    );
 
   return (
     <div className="bg-surface py-8 md:py-10">
@@ -170,13 +179,15 @@ export default function AccountPage() {
                 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
               />
               <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search your orders"
                 aria-label="Search your orders"
-                /* Disabled, not hidden. The field is the shape this panel
-                   will have once orders arrive; leaving it enabled over an
-                   empty list lets someone type and get nothing back, which
-                   reads as broken search rather than as an empty account. */
-                disabled
+                /* Enabled only once there is something to search. Over an
+                   empty list it stays disabled — letting someone type and get
+                   nothing back reads as broken search rather than as an empty
+                   account. */
+                disabled={orders.length === 0}
                 className="h-12 w-full rounded-xl border-2 border-line bg-surface pl-10 pr-4 text-sm text-ink outline-none transition-colors placeholder:text-muted disabled:cursor-not-allowed"
               />
             </div>
@@ -202,26 +213,103 @@ export default function AccountPage() {
               ))}
             </div>
 
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <span className="grid h-16 w-16 place-items-center rounded-full bg-surface">
-                <Package size={26} className="text-muted" />
-              </span>
-              <p className="mt-4 text-[0.95rem] font-semibold text-ink">
-                {filter === "All"
-                  ? "No orders yet"
-                  : `No ${filter.toLowerCase()} orders`}
-              </p>
-              <p className="mt-1 max-w-xs text-[0.82rem] leading-relaxed text-muted">
-                Once you place an order it will show up here, with tracking and
-                installation updates.
-              </p>
-              <Link
-                href="/categories"
-                className="mt-6 rounded-xl bg-night px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
-              >
-                Start shopping
-              </Link>
-            </div>
+            {ordersLoading ? (
+              <div className="mt-5 space-y-3">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-28 animate-pulse rounded-xl bg-surface"
+                  />
+                ))}
+              </div>
+            ) : visibleOrders.length > 0 ? (
+              <ul className="mt-5 space-y-3">
+                {visibleOrders.map((order) => (
+                  <li
+                    key={order.id}
+                    className="rounded-xl border border-line p-4"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-[0.95rem] font-semibold text-ink">
+                        {order.name}
+                      </p>
+                      <p className="text-[0.95rem] font-semibold text-ink">
+                        {formatPrice(order.total)}
+                      </p>
+                    </div>
+
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.78rem] text-muted">
+                      <span>
+                        {new Date(order.processedAt).toLocaleDateString(
+                          "en-IN",
+                          { day: "numeric", month: "short", year: "numeric" }
+                        )}
+                      </span>
+                      <span aria-hidden>·</span>
+                      {/* Status is the one thing people open this page for, so
+                          it gets colour rather than sitting in the grey run of
+                          metadata. */}
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          statusOf(order) === "Delivered" && "text-save",
+                          statusOf(order) === "Cancelled" && "text-accent",
+                          statusOf(order) === "Active" && "text-ink"
+                        )}
+                      >
+                        {statusOf(order)}
+                      </span>
+                    </p>
+
+                    <ul className="mt-3 space-y-1">
+                      {order.lines.map((line, i) => (
+                        <li
+                          key={`${order.id}-${i}`}
+                          className="text-[0.85rem] leading-relaxed text-muted"
+                        >
+                          {line.title}
+                          {line.variantTitle && (
+                            <span className="text-muted/70">
+                              {" — "}
+                              {line.variantTitle}
+                            </span>
+                          )}
+                          {line.quantity > 1 && (
+                            <span className="font-medium text-ink">
+                              {" ×"}
+                              {line.quantity}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <span className="grid h-16 w-16 place-items-center rounded-full bg-surface">
+                  <Package size={26} className="text-muted" />
+                </span>
+                <p className="mt-4 text-[0.95rem] font-semibold text-ink">
+                  {orders.length === 0
+                    ? "No orders yet"
+                    : q
+                      ? "Nothing matches that search"
+                      : `No ${filter.toLowerCase()} orders`}
+                </p>
+                <p className="mt-1 max-w-xs text-[0.82rem] leading-relaxed text-muted">
+                  Once you place an order it will show up here, with tracking
+                  and installation updates.
+                </p>
+                <Link
+                  href="/categories"
+                  className="mt-6 rounded-xl bg-night px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-night-deep"
+                >
+                  Start shopping
+                </Link>
+              </div>
+            )}
           </section>
 
           {/* ------------------------------------------------ recommendations

@@ -3,6 +3,7 @@
 import { attachCustomer, destroySession, getSession } from "@/lib/session";
 import type { Address } from "@/types";
 import { createCustomerWithProfile } from "@/lib/shopify/customer-storefront";
+import { deleteOrders, getOrders, type StoredOrder } from "@/lib/order-store";
 import {
   deleteAddress,
   deleteProfile,
@@ -166,6 +167,24 @@ export async function saveProfileAction(fields: {
   }
 }
 
+/**
+ * Order history.
+ *
+ * Read from OUR store, not from Shopify — see lib/order-store.ts. Orders
+ * arrive by webhook as they are placed, because a passwordless store will not
+ * issue the customer token needed to pull them.
+ *
+ * An empty list therefore means one of three things, and they are worth
+ * distinguishing when something looks wrong: no orders yet, the webhook is
+ * not registered, or an order could not be matched to this account. The
+ * webhook logs the third case.
+ */
+export async function fetchOrders(): Promise<StoredOrder[]> {
+  const session = await getSession();
+  if (!session) return [];
+  return getOrders(session.phone);
+}
+
 export async function fetchAddresses(): Promise<Address[]> {
   const session = await getSession();
   if (!session) return [];
@@ -237,6 +256,9 @@ export async function deleteAccountAction(): Promise<{
 
   try {
     await deleteProfile(session.phone);
+    /* Orders go too. Leaving them would resurrect a closed customer's history
+       the moment someone signed up on the same number. */
+    await deleteOrders(session.phone);
     await destroySession();
     return { ok: true };
   } catch (err) {

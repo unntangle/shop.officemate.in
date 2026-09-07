@@ -14,6 +14,7 @@ import { LoginModal } from "@/components/common/LoginModal";
 import {
   deleteAccountAction,
   fetchAddresses,
+  fetchOrders,
   getAuthState,
   removeAddressAction,
   saveAddressAction,
@@ -21,6 +22,7 @@ import {
   signOutAction,
   type AuthState,
 } from "@/lib/auth-actions";
+import type { StoredOrder } from "@/lib/order-store";
 
 /**
  * Who is signed in.
@@ -57,6 +59,8 @@ interface AuthContextValue {
   }) => Promise<{ ok: boolean; error?: string }>;
 
   addresses: Address[];
+  orders: StoredOrder[];
+  ordersLoading: boolean;
   saveAddress: (address: Address) => Promise<{ ok: boolean; error?: string }>;
   removeAddress: (id: string) => Promise<{ ok: boolean; error?: string }>;
 
@@ -76,6 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [orders, setOrders] = useState<StoredOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -97,12 +103,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!auth?.signedIn) {
       setAddresses([]);
+      setOrders([]);
       return;
     }
     let cancelled = false;
+
     fetchAddresses().then((list) => {
       if (!cancelled) setAddresses(list);
     });
+
+    setOrdersLoading(true);
+    fetchOrders()
+      .then((list) => {
+        if (!cancelled) setOrders(list);
+      })
+      .finally(() => {
+        if (!cancelled) setOrdersLoading(false);
+      });
+
     return () => {
       cancelled = true;
     };
@@ -185,6 +203,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileComplete: Boolean(auth?.profileComplete),
       saveProfile,
       addresses,
+      orders,
+      ordersLoading,
       saveAddress,
       removeAddress,
       openLogin,
@@ -197,6 +217,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ready,
       saveProfile,
       addresses,
+      orders,
+      ordersLoading,
       saveAddress,
       removeAddress,
       openLogin,
