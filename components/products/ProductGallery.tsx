@@ -18,10 +18,27 @@ export function ProductGallery({
   slug,
   category,
   name,
+  images,
 }: {
   slug: string;
   category: CategorySlug;
   name: string;
+  /**
+   * Photography from Shopify, when the product came from there.
+   *
+   * TAKES PRECEDENCE OVER THE LOCAL GALLERY. Without it this component looked
+   * the product up by slug in constants/products.ts, so a product whose
+   * images had moved to Shopify still showed its old local shots — the lookup
+   * succeeded, nothing appeared broken, and the page simply displayed the
+   * wrong chair. Same bug the product cards had.
+   *
+   * ⚠ COLOUR-SPECIFIC SHOTS ARE LOST while this is set. The local gallery can
+   * return a different set per colourway; Shopify media is one list for the
+   * whole product. Switching colour will change the swatch and the 3D model
+   * but not the photographs. Fixing that properly means per-variant media in
+   * Shopify, which is a data job rather than a code one.
+   */
+  images?: string[];
 }) {
   const { active: activeColor } = useProductColor();
   const [active, setActive] = useState(0);
@@ -32,9 +49,12 @@ export function ProductGallery({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  /* Real photography when it exists — colour-specific shots first, then the
-     product's default set; the generated render only as a last resort. */
-  const photos = galleryFor(slug, activeColor.name);
+  /* Shopify media first, then real local photography, then the generated
+     render. See the note on `images` — a slug lookup that quietly wins over
+     the data passed in is how the wrong chair ends up on the page. */
+  const photos = images && images.length > 0
+    ? images
+    : galleryFor(slug, activeColor.name);
   const hasPhotos = photos.length > 0;
   const views = hasPhotos ? photos.map((_, i) => i) : RENDER_VARIANTS;
   const current = Math.min(active, views.length - 1);

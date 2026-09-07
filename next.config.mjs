@@ -43,5 +43,35 @@ const nextConfig = {
     ],
   },
   eslint: { ignoreDuringBuilds: true },
+
+  /**
+   * Legacy route redirects.
+   *
+   * /products WAS the catalogue listing before it moved to /categories. It
+   * has been 404ing since, which is fine for a URL nobody ever linked to and
+   * wrong for one people type by habit — "products" is the obvious guess on
+   * any storefront, and a 404 there sends someone to the exit.
+   *
+   * ⚠ THE SOURCE IS `/products` EXACTLY, NOT A WILDCARD. `/products/:slug`
+   * is still the live product detail route and must not be caught by this.
+   * Next matches the literal path here, so `/products/zenpro` is untouched —
+   * but anyone tempted to write `/products/:path*` to "be thorough" would
+   * take every product page down with it.
+   *
+   * `permanent: true` issues a 308: search engines transfer any ranking the
+   * old URL held, and browsers cache it. That is the right call for a move
+   * that is not being reversed — but it also means a stale cache will keep
+   * redirecting if /products ever becomes a real page again, so changing this
+   * back is not as simple as deleting these lines.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/products",
+        destination: "/categories",
+        permanent: true,
+      },
+    ];
+  },
 };
 export default nextConfig;

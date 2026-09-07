@@ -11,7 +11,8 @@ import {
   Layers,
   Wind,
 } from "lucide-react";
-import { PRODUCTS, getProduct, galleryFor, panelsFor } from "@/constants/products";
+import { PRODUCTS, galleryFor, panelsFor } from "@/constants/products";
+import { getCatalog } from "@/lib/catalog.server";
 import { categoryName } from "@/constants/categories";
 import { CHAIR_MODELS } from "@/constants/chairs";
 import { SITE } from "@/constants/site";
@@ -25,6 +26,7 @@ import { ColorProvider } from "@/components/products/ColorProvider";
 import { ColorPicker } from "@/components/products/ColorPicker";
 import { Configurator } from "@/components/products/Configurator";
 import { BuyBox } from "@/components/products/BuyBox";
+import { ShareButton } from "@/components/products/ShareButton";
 import { StickyBuy } from "@/components/products/StickyBuy";
 
 export function generateStaticParams() {
@@ -37,7 +39,15 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProduct(slug);
+
+  /* Reads the same merged catalogue as the page below, not the local file.
+     Leaving this on `getProduct` was what threw "getProduct is not defined"
+     — but even with the import restored it would have been wrong: the page
+     would render the Shopify name and price while the <title> and the Open
+     Graph card carried the old local ones. Metadata that disagrees with the
+     page is what gets scraped into a search result or a WhatsApp preview. */
+  const catalog = await getCatalog();
+  const product = catalog.find((i) => i.slug === slug)?.product;
   if (!product) return { title: "Product not found" };
 
   return {
@@ -63,7 +73,20 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = getProduct(slug);
+
+  /* Shopify first, local record as the fallback — same source the listing
+     page and the cards read. This used to call `getProduct(slug)` straight
+     from constants/products.ts, so a product edited in Shopify kept showing
+     its old local name, price and photography here while the rest of the site
+     had already moved on.
+
+     `item.product` is the MERGED record from lib/shopify/mapper.ts: Shopify
+     for anything Shopify holds, the local file for the specs, features and
+     FAQs it does not. So this page keeps working for products that exist in
+     only one of the two places. */
+  const catalog = await getCatalog();
+  const item = catalog.find((i) => i.slug === slug);
+  const product = item?.product;
   if (!product) notFound();
 
   /* Related — real Officemate models, photographed ones first, never demo data. */
@@ -75,7 +98,9 @@ export default async function ProductDetailPage({
      carry their own captions), and fall back to feature text paired with
      gallery / stand-in photography for products that have no panels yet. */
   const panels = panelsFor(product.slug);
-  const highlightPhotos = galleryFor(product.slug);
+  const highlightPhotos = item?.images?.length
+    ? item.images
+    : galleryFor(product.slug);
   const highlightPool = highlightPhotos.length
     ? highlightPhotos
     : [
@@ -127,7 +152,12 @@ export default async function ProductDetailPage({
   };
 
   return (
-    <div className="pt-16 md:pt-20">
+    /* Tight to the header. This was `pt-16 md:pt-20`, which dated from when
+       the navbar was fixed and overlapped the page — it is in normal flow
+       now, so that padding was pure empty space pushing the gallery and the
+       price below the fold on a laptop. The one screen where a shopper
+       decides to buy should not open on a blank band. */
+    <div className="pt-5 md:pt-7">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -151,15 +181,43 @@ export default async function ProductDetailPage({
             slug={product.slug}
             category={product.category}
             name={product.name}
+            /* Shopify media when the product came from there. See the note on
+               the `images` prop — without it the gallery falls back to a slug
+               lookup and shows the old local shots. */
+            images={item?.images}
           />
 
           <div className="lg:py-4">
-            <span className="eyebrow block">
-              {categoryName(product.category)}
-            </span>
-            <h1 className="display mt-2 text-3xl font-semibold leading-[1.05] text-ink sm:text-4xl md:text-[2.75rem]">
-              {product.name}
-            </h1>
+            {/* ⚠ THE RATING PILL WAS REMOVED FROM HERE.
+
+                It showed 4.7 from 302 reviews, and neither number is real —
+                both come from `constants/products.ts`, invented for the
+                showcase build. There are no reviews behind them, no review
+                system, and nothing that could produce them.
+
+                A fabricated rating is not a placeholder like a lorem heading;
+                it is a claim a shopper uses to decide, and in India it is the
+                kind of thing consumer courts have taken a dim view of. Better
+                absent than invented.
+
+                BRING IT BACK when reviews are real — a Shopify reviews app,
+                or Judge.me, or a metafield fed by verified purchases. The
+                markup was a rounded pill with a filled `rated` star, the
+                score in bold ink and the count in muted, sitting above the
+                title. The `aggregateRating` block in the JSON-LD below has
+                the same problem and is still live; it should come out too if
+                this stays absent for long. */}
+
+            {/* Title and share share a row. The share control is a peer of the
+                name, not of the buy buttons — it acts on the product as a
+                whole, and putting it near Add to cart would make it look like
+                a purchase option. */}
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="display text-3xl font-semibold leading-[1.05] text-ink sm:text-4xl md:text-[2.75rem]">
+                {product.name}
+              </h1>
+              <ShareButton name={product.name} tagline={product.tagline} />
+            </div>
 
             <p className="mt-4 text-lg leading-relaxed text-muted">
               {product.tagline}

@@ -124,6 +124,9 @@ export function StickyBuy({ product }: { product: Product }) {
                   <AddToCartButton
                     product={product}
                     color={color}
+                    /* White on the dark bar. `solid` is charcoal now, which
+                       on `bg-ink/90` would be all but invisible. */
+                    variant="light"
                     size="sm"
                     fullWidth={false}
                   />
