@@ -157,6 +157,24 @@
     appearance: none;
   }
 
+  /* Hide the site header while the product page's sticky buy bar is up.
+
+     Both are fixed to the top at z-50, and the bar is shorter than the
+     header — so without this the bar covers the announcement strip and the
+     logo and nav row poke out beneath it, two headers stacked on one screen.
+
+     `visibility`, NOT `display`. The header is `sticky`, so it still occupies
+     its place in the document flow; `display: none` would remove that space
+     and jerk the entire page upward by the header's height the instant the
+     bar appears — and back down again when it leaves. `visibility: hidden`
+     keeps the box and only stops it painting.
+
+     The attribute is set by StickyBuy on <body>; see the note there for why
+     it is an attribute rather than shared React state. */
+  body[data-pdp-bar] [data-site-header] {
+    visibility: hidden;
+  }
+
   ::selection {
     /* Kept in sync with `accent` in tailwind.config.ts — #EC1C24 is
        rgb(236, 28, 36). A selection highlight cannot be a Tailwind class, so

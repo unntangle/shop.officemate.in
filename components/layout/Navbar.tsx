@@ -587,7 +587,13 @@ export function Navbar() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full">
+    /* `data-site-header` is a hook for the product page's sticky bar, which
+       covers the top of the viewport and needs this out of the way. It is an
+       attribute rather than a prop or a context because the bar lives deep
+       inside the page tree while this sits in the root layout — wiring state
+       between them would mean threading a provider around the whole app to
+       control one CSS property. See globals.css. */
+    <header data-site-header className="sticky top-0 z-50 w-full">
       <AnnouncementBar />
 
       {/* ---------------------------------------------------------------
